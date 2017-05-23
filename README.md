@@ -4,4 +4,4 @@ This Projekt should be able to estimate the depth of a single Image with the hel
 
 ## Copyright
 
-Copyright (c) 2017 Dominik Rose, Pascal Müller, Maurice Langer.
+Copyright (c) 2017 Dominik Rose, Pascal Mueller, Maurice Langer.

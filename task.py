@@ -9,7 +9,7 @@ from dataset import output_predict
 import model
 import train_operation as op
 
-MAX_STEPS = 10000000
+MAX_STEPS = 1000
 LOG_DEVICE_PLACEMENT = False
 BATCH_SIZE = 8
 TRAIN_FILE = "train.csv"
