@@ -80,7 +80,9 @@ def train():
             else:
                 print("No Pretrained coarse Model.")
             if REFINE_TRAIN:
+                print("trying to load models ♥")
                 refine_ckpt = tf.train.get_checkpoint_state(REFINE_DIR)
+                print(refine_ckpt)
                 if refine_ckpt and refine_ckpt.model_checkpoint_path:
                     print("Pretrained refine Model Loading.")
                     saver_refine.restore(sess, refine_ckpt.model_checkpoint_path)
