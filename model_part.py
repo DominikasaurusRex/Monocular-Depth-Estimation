@@ -35,7 +35,7 @@ def conv2d(scope_name, inputs, shape, bias_shape, stride, padding='VALID', wd=0.
         return conv_
 
 
-def fc(scope_name, inputs, shape, bias_shape, wd=0.04, reuse=False, trainable=True):
+def fullyConnectedLayer(scope_name, inputs, shape, bias_shape, wd=0.04, reuse=False, trainable=True):
     with tf.variable_scope(scope_name) as scope:
         if reuse is True:
             scope.reuse_variables()
@@ -48,5 +48,5 @@ def fc(scope_name, inputs, shape, bias_shape, wd=0.04, reuse=False, trainable=Tr
             trainable=trainable
         )
         biases = _variable_on_gpu('biases', bias_shape, tf.constant_initializer(0.1))
-        fc = tf.nn.relu_layer(flat, weights, biases, name=scope.name)
-        return fc
+        fcl= tf.nn.relu_layer(flat, weights, biases, name=scope.name)
+        return fcl

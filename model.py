@@ -4,9 +4,9 @@
 import tensorflow as tf
 import math
 from model_part import conv2d
-from model_part import fc
+from model_part import fullyConnectedLayer
 
-def inference(images, reuse=False, trainable=True):
+def globalDepthMap(images, reuse=False, trainable=True):
     with tf.name_scope("Global_Depth"):
         coarse1_conv = conv2d('coarse1', images, [11, 11, 3, 96], [96], [1, 4, 4, 1], padding='VALID', reuse=reuse, trainable=trainable)
         coarse1 = tf.nn.max_pool(coarse1_conv, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='VALID', name='pool1')
@@ -15,13 +15,13 @@ def inference(images, reuse=False, trainable=True):
         coarse3 = conv2d('coarse3', coarse2, [3, 3, 256, 384], [384], [1, 1, 1, 1], padding='VALID', reuse=reuse, trainable=trainable)
         coarse4 = conv2d('coarse4', coarse3, [3, 3, 384, 384], [384], [1, 1, 1, 1], padding='VALID', reuse=reuse, trainable=trainable)
         coarse5 = conv2d('coarse5', coarse4, [3, 3, 384, 256], [256], [1, 1, 1, 1], padding='VALID', reuse=reuse, trainable=trainable)
-        coarse6 = fc('coarse6', coarse5, [6*10*256, 4096], [4096], reuse=reuse, trainable=trainable)
-        coarse7 = fc('coarse7', coarse6, [4096, 4070], [4070], reuse=reuse, trainable=trainable)
+        coarse6 = fullyConnectedLayer('coarse6', coarse5, [6*10*256, 4096], [4096], reuse=reuse, trainable=trainable)
+        coarse7 = fullyConnectedLayer('coarse7', coarse6, [4096, 4070], [4070], reuse=reuse, trainable=trainable)
         coarse7_output = tf.reshape(coarse7, [-1, 55, 74, 1])
     return coarse7_output
 
 
-def inference_refine(images, coarse7_output, keep_conv, reuse=False, trainable=True):
+def localDepthMap(images, coarse7_output, keep_conv, reuse=False, trainable=True):
     with tf.name_scope("Local_Depth"):
         fine1_conv = conv2d('fine1', images, [9, 9, 3, 63], [63], [1, 2, 2, 1], padding='VALID', reuse=reuse, trainable=trainable)
         fine1 = tf.nn.max_pool(fine1_conv, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='fine_pool1')
