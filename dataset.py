@@ -38,6 +38,7 @@ class DataSet:
             num_threads=4,
             capacity= 50 + 3 * self.batch_size,
         )
+        #print(images)
         return images, depths, invalid_depths
 
 

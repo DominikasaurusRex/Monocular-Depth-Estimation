@@ -6,7 +6,8 @@ import numpy as np
 import tensorflow as tf
 from dataset import DataSet
 from dataset import output_predict
-import model
+#import model
+import new_model
 import train_operation as op
 
 MAX_STEPS = 1000
@@ -24,16 +25,16 @@ def train():
         global_step = tf.Variable(0, trainable=False)
         dataset = DataSet(BATCH_SIZE)
         images, depths, invalid_depths = dataset.csv_inputs(TRAIN_FILE)
-        keep_conv = tf.placeholder(tf.float32)
-        keep_hidden = tf.placeholder(tf.float32)
+        keep_conv = tf.placeholder(tf.bool)
+        keep_hidden = tf.placeholder(tf.bool)
         if REFINE_TRAIN:
             print("refine train.")
-            coarse = model.globalDepthMap(images, keep_conv, trainable=False)
-            logits = model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+            coarse = new_model.globalDepthMap(images, keep_conv, trainable=False)
+            logits = new_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
         else:
             print("coarse train.")
-            logits = model.globalDepthMap(images, keep_conv, keep_hidden)
-        loss = model.loss(logits, depths, invalid_depths)
+            logits = new_model.globalDepthMap(images, keep_conv, keep_hidden)
+        loss = new_model.loss(logits, depths, invalid_depths)
         train_op = op.train(loss, global_step, BATCH_SIZE)
         
         # Tensorboard
@@ -87,7 +88,7 @@ def train():
             else:
                 print("No Pretrained coarse Model.")
             if REFINE_TRAIN:
-                print("trying to load models ♥")
+                print("trying to load models")
                 refine_ckpt = tf.train.get_checkpoint_state(REFINE_DIR)
                 print(refine_ckpt)
                 if refine_ckpt and refine_ckpt.model_checkpoint_path:
@@ -103,7 +104,7 @@ def train():
         for step in range(MAX_STEPS):
             index = 0
             for i in range(1000):
-                _, loss_value, logits_val, images_val = sess.run([train_op, loss, logits, images], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                _, loss_value, logits_val, images_val = sess.run([train_op, loss, logits, images], feed_dict={keep_conv: True, keep_hidden: True})
                 if index % 10 == 0:
                     print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), step, index, loss_value))
                     assert not np.isnan(loss_value), 'Model diverged with loss = NaN'

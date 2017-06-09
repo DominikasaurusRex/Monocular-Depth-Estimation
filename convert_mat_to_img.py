@@ -13,14 +13,20 @@ def convert_nyu(path):
 
     trains = []
     for i, (image, depth) in enumerate(zip(f['images'], f['depths'])):
+        scriptpath = os.path.dirname(__file__)
         ra_image = image.transpose(2, 1, 0)
         ra_depth = depth.transpose(1, 0)
         re_depth = (ra_depth/np.max(ra_depth))*255.0
         image_pil = Image.fromarray(np.uint8(ra_image))
         depth_pil = Image.fromarray(np.uint8(re_depth))
-        image_name = os.path.join("data", "nyu_datasets", "%05d.jpg" % (i))
+        #image_name = os.path.join("D:/Workspace/GitRepository/Monocular-Depth-Estimation/data/nyu_datasets/%05d.jpg" % (i))
+        #image_name = os.path.join("D:\Workspace\GitRepository\Monocular-Depth-Estimation\data\\nyu_datasets\%05d.jpg" % (i))
+        #image_name = os.path.join(scriptpath, "data", "nyu_datasets", "%05d.jpg" % (i))
+        #image_name = os.path.join("data", "nyu_datasets", "%05d.jpg" % (i))
+        #image_name = os.path.join(scriptpath, "data", "%05d.jpg" % (i))
+        image_name = os.path.join(scriptpath, "data",  "_nyu_datasets", "%05d.jpg" % (i))
         image_pil.save(image_name)
-        depth_name = os.path.join("data", "nyu_datasets", "%05d.png" % (i))
+        depth_name = os.path.join(scriptpath, "data", "_nyu_datasets", "%05d.png" % (i))
         depth_pil.save(depth_name)
 
         trains.append((image_name, depth_name))
@@ -35,4 +41,5 @@ def convert_nyu(path):
 if __name__ == '__main__':
     current_directory = os.getcwd()
     nyu_path = 'data/nyu_depth_v2_labeled.mat'
+    #nyu_path = "D:/Workspace/GitRepository/Monocular-Depth-Estimation/data/nyu_depth_v2_labeled.mat"
     convert_nyu(nyu_path)
