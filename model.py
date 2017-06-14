@@ -11,13 +11,24 @@ def globalDepthMap(images, reuse=False, trainable=True):
         coarse1_conv = conv2d('coarse1', images, [11, 11, 3, 96], [96], [1, 4, 4, 1], padding='VALID', reuse=reuse, trainable=trainable)
         coarse1 = tf.nn.max_pool(coarse1_conv, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='VALID', name='pool1')
         coarse2_conv = conv2d('coarse2', coarse1, [5, 5, 96, 256], [256], [1, 1, 1, 1], padding='VALID', reuse=reuse, trainable=trainable)
-        coarse2 = tf.nn.max_pool(coarse2_conv, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool1')
+        coarse2 = tf.nn.max_pool(coarse2_conv, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='pool2')
         coarse3 = conv2d('coarse3', coarse2, [3, 3, 256, 384], [384], [1, 1, 1, 1], padding='VALID', reuse=reuse, trainable=trainable)
         coarse4 = conv2d('coarse4', coarse3, [3, 3, 384, 384], [384], [1, 1, 1, 1], padding='VALID', reuse=reuse, trainable=trainable)
         coarse5 = conv2d('coarse5', coarse4, [3, 3, 384, 256], [256], [1, 1, 1, 1], padding='VALID', reuse=reuse, trainable=trainable)
         coarse6 = fullyConnectedLayer('coarse6', coarse5, [6*10*256, 4096], [4096], reuse=reuse, trainable=trainable)
         coarse7 = fullyConnectedLayer('coarse7', coarse6, [4096, 4070], [4070], reuse=reuse, trainable=trainable)
         coarse7_output = tf.reshape(coarse7, [-1, 55, 74, 1])
+
+        #print("Coarse1_Conv: ", coarse1_conv._shape)
+        #print("Coarse1: ", coarse1._shape)
+        #print("Coarse2_Conv: ", coarse2_conv._shape)
+        #print("Coarse2: ", coarse2._shape)
+        #print("Coarse3: ", coarse3._shape)
+        #print("Coarse4: ", coarse4._shape)
+        #print("Coarse5: ", coarse5._shape)
+        #print("Coarse6: ", coarse6._shape)
+        #print("Coarse7: ", coarse7._shape)
+        #print("Coarse7_output: ", coarse7_output._shape)
     return coarse7_output
 
 
@@ -30,6 +41,14 @@ def localDepthMap(images, coarse7_output, keep_conv, reuse=False, trainable=True
         fine3 = conv2d('fine3', fine2, [5, 5, 64, 64], [64], [1, 1, 1, 1], padding='SAME', reuse=reuse, trainable=trainable)
         fine3_dropout = tf.nn.dropout(fine3, keep_conv)
         fine4 = conv2d('fine4', fine3_dropout, [5, 5, 64, 1], [1], [1, 1, 1, 1], padding='SAME', reuse=reuse, trainable=trainable)
+
+        #print("fine1_conv ", fine1_conv._shape)
+        #print("fine1 ", fine1._shape)
+        #print("fine1_dropout ", fine1_dropout._shape)
+        #print("fine2 ", fine2._shape)
+        #print("fine3 ", fine3._shape)
+        #print("fine3_dropout ", fine3_dropout._shape)
+        #print("fine4 ", fine4._shape)
     return fine4
 
 
