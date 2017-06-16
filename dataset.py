@@ -7,6 +7,7 @@ IMAGE_HEIGHT = 228
 IMAGE_WIDTH = 304
 TARGET_HEIGHT = 55
 TARGET_WIDTH = 74
+GRAYSCALE = True
 
 class DataSet:
     def __init__(self, batch_size):
@@ -19,26 +20,33 @@ class DataSet:
         filename, depth_filename = tf.decode_csv(serialized_example, [["path"], ["annotation"]])
         # input
         jpg = tf.read_file(filename)
-        image = tf.image.decode_jpeg(jpg, channels=3)
+        
+        if GRAYSCALE:
+            image = tf.image.decode_jpeg(jpg, channels=1)
+        else:
+            image = tf.image.decode_jpeg(jpg, channels=3)
+            
         image = tf.cast(image, tf.float32)       
         # target
         depth_png = tf.read_file(depth_filename)
         depth = tf.image.decode_png(depth_png, channels=1)
         depth = tf.cast(depth, tf.float32)
         depth = tf.div(depth, [255.0])
+        
         #depth = tf.cast(depth, tf.int64)
         # resize
         image = tf.image.resize_images(image, (IMAGE_HEIGHT, IMAGE_WIDTH))
         depth = tf.image.resize_images(depth, (TARGET_HEIGHT, TARGET_WIDTH))
         invalid_depth = tf.sign(depth)
         # generate batch
+        
+        
         images, depths, invalid_depths = tf.train.batch(
             [image, depth, invalid_depth],
             batch_size=self.batch_size,
             num_threads=4,
             capacity= 50 + 3 * self.batch_size,
         )
-        #print(images)
         return images, depths, invalid_depths
 
 
@@ -47,14 +55,23 @@ def output_predict(depths, images, output_dir):
     if not gfile.Exists(output_dir):
         gfile.MakeDirs(output_dir)
     for i, (image, depth) in enumerate(zip(images, depths)):
-        pilimg = Image.fromarray(np.uint8(image))
+        
+    
+        if GRAYSCALE:    
+            image = image.transpose(2, 0, 1)
+            pilimg = Image.fromarray(np.uint8(image[0]), mode="L")
+        else:
+            pilimg = Image.fromarray(np.uint8(image))
+        
         image_name = "%s/%05d_org.png" % (output_dir, i)
         pilimg.save(image_name)
+        
         depth = depth.transpose(2, 0, 1)
         if np.max(depth) != 0:
             ra_depth = (depth/np.max(depth))*255.0
         else:
             ra_depth = depth*255.0
+        
         depth_pil = Image.fromarray(np.uint8(ra_depth[0]), mode="L")
         depth_name = "%s/%05d.png" % (output_dir, i)
         depth_pil.save(depth_name)
