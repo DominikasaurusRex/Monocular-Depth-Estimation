@@ -6,8 +6,8 @@ import numpy as np
 import tensorflow as tf
 from dataset import DataSet
 from dataset import output_predict
-#import model
-import new_model
+#import model as model
+import new_model as model
 import train_operation as op
 
 MAX_STEPS = 1000
@@ -29,12 +29,12 @@ def train():
         keep_hidden = tf.placeholder(tf.bool)
         if REFINE_TRAIN:
             print("refine train.")
-            coarse = new_model.globalDepthMap(images, keep_conv, trainable=False)
-            logits = new_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+            coarse = model.globalDepthMap(images, keep_conv, trainable=False)
+            logits = model.localDepthMap(images, coarse, keep_conv, keep_hidden)
         else:
             print("coarse train.")
-            logits = new_model.globalDepthMap(images, keep_conv, keep_hidden)
-        loss = new_model.loss(logits, depths, invalid_depths)
+            logits = model.globalDepthMap(images, keep_conv, keep_hidden)
+        loss = model.loss(logits, depths, invalid_depths)
         train_op = op.train(loss, global_step, BATCH_SIZE)
         
         # Tensorboard
@@ -104,7 +104,8 @@ def train():
         for step in range(MAX_STEPS):
             index = 0
             for i in range(1000):
-                _, loss_value, logits_val, images_val = sess.run([train_op, loss, logits, images], feed_dict={keep_conv: True, keep_hidden: True})
+                _, loss_value, logits_val, images_val, summary = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: True, keep_hidden: True})
+                writer.add_summary(summary, step)
                 if index % 10 == 0:
                     print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), step, index, loss_value))
                     assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
