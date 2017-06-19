@@ -7,7 +7,7 @@ IMAGE_HEIGHT = 228
 IMAGE_WIDTH = 304
 TARGET_HEIGHT = 55
 TARGET_WIDTH = 74
-GRAYSCALE = True
+GRAYSCALE = False
 
 class DataSet:
     def __init__(self, batch_size):
@@ -50,11 +50,11 @@ class DataSet:
         return images, depths, invalid_depths
 
 
-def output_predict(depths, images, output_dir):
+def output_predict(depths, images, real_depths, output_dir):
     print("output predict into %s" % output_dir)
     if not gfile.Exists(output_dir):
         gfile.MakeDirs(output_dir)
-    for i, (image, depth) in enumerate(zip(images, depths)):
+    for i, (image, depth, real_depth) in enumerate(zip(images, depths, real_depths)):
         
     
         if GRAYSCALE:    
@@ -65,6 +65,13 @@ def output_predict(depths, images, output_dir):
         
         image_name = "%s/%05d_org.png" % (output_dir, i)
         pilimg.save(image_name)
+        
+        real_depth = real_depth.transpose(2, 0, 1)
+        real_trans_depth = real_depth*255.0
+        pildepth = Image.fromarray(np.uint8(real_trans_depth[0]), mode ="L")
+        image_depth_name = "%s/%05d_ground.png" % (output_dir, i)
+        pildepth.save(image_depth_name)
+        
         
         depth = depth.transpose(2, 0, 1)
         if np.max(depth) != 0:
