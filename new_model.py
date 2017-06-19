@@ -86,7 +86,7 @@ def _add_loss_summaries(total_loss):
 
 #if __name__ == '__main__':
     #dataset = DataSet(BATCH_SIZE)
-    #images, depths, invalid_depths = dataset.csv_inputs(TRAIN_FILE)
+    #images, depths, invalid_depths = dataset.create_trainingbatches_from_csv(TRAIN_FILE)
     #print(images._shape)
     #print("----------------------------")
     #out = globalDepthMap(images)

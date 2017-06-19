@@ -24,7 +24,7 @@ def train():
     with tf.Graph().as_default():
         global_step = tf.Variable(0, trainable=False)
         dataset = DataSet(BATCH_SIZE)
-        images, depths, invalid_depths = dataset.csv_inputs(TRAIN_FILE)
+        images, depths, invalid_depths = dataset.create_trainingbatches_from_csv(TRAIN_FILE)
         keep_conv = tf.placeholder(tf.float32)
         keep_hidden = tf.placeholder(tf.float32)
         if REFINE_TRAIN:
