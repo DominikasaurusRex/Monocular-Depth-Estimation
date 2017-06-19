@@ -26,7 +26,7 @@ def convert_nyu_dataset_into_images_and_csv(path):
 
         trainingsmaterial.append((image_original_name, image_depth_name))
 
-    random.shuffle(trainingsmaterial)
+    #random.shuffle(trainingsmaterial) #we should probably keep the same first trainingsmaterials
     
     write_csv_file(trainingsmaterial)
 

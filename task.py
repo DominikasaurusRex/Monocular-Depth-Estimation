@@ -6,8 +6,8 @@ import numpy as np
 import tensorflow as tf
 from dataset import DataSet
 from dataset import output_predict_into_images
-import model as model
-#import new_model as model
+#import model as model
+import new_model as model
 import train_operation as op
 
 MAX_STEPS = 1000
