@@ -42,13 +42,13 @@ class DataSet:
         depth_map_signum = tensorflow.sign(image_depth)
         
         # generate batch
-        original_images, depth_maps, depth_maps_signums = tensorflow.train.batch(
+        original_images, depth_maps, depth_maps_sigma = tensorflow.train.batch(
             [image_original, image_depth, depth_map_signum],
             batch_size=self.batch_size,
             num_threads=NUMBER_OF_THREADS,
             capacity=50 + 3 * self.batch_size,
         )
-        return original_images, depth_maps, depth_maps_signums
+        return original_images, depth_maps, depth_maps_sigma
     
 
 def output_predict_into_images(predictions, originals, groundtruths, output_dir):
