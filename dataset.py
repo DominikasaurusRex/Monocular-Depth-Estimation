@@ -50,19 +50,19 @@ class DataSet:
         return images, depths, invalid_depths
 
 
-def output_predict(predictions, images, groundtruths, output_dir):
+def output_predict_into_images(predictions, originals, groundtruths, output_dir):
     print("output predict into %s" % output_dir)
     if not gfile.Exists(output_dir):
         gfile.MakeDirs(output_dir)
-    for i, (image, prediction, groundtruth) in enumerate(zip(images, predictions, groundtruths)):
+    for i, (original, prediction, groundtruth) in enumerate(zip(originals, predictions, groundtruths)):
         #original      
         if GRAYSCALE:    
-            image = image.transpose(2, 0, 1)
-            pilimg = Image.fromarray(np.uint8(image[0]), mode="L")
+            original = original.transpose(2, 0, 1)
+            original_pil = Image.fromarray(np.uint8(original[0]), mode="L")
         else:
-            pilimg = Image.fromarray(np.uint8(image))
-        image_name = "%s/%05d_org.png" % (output_dir, i)
-        pilimg.save(image_name)
+            original_pil = Image.fromarray(np.uint8(original))
+        original_name = "%s/%05d_org.png" % (output_dir, i)
+        original_pil.save(original_name)
         
         #ground truth
         groundtruth = groundtruth.transpose(2, 0, 1)
@@ -71,18 +71,13 @@ def output_predict(predictions, images, groundtruths, output_dir):
         groundtruth_name = "%s/%05d_ground.png" % (output_dir, i)
         groundtruth_pil.save(groundtruth_name)
         
-        #prediction
-        print(prediction)
-        
+        #prediction        
         prediction_transposed = prediction.transpose(2, 0, 1)
-        print("after Transpose", prediction_transposed)
-        if np.max(prediction_transposed) != 0:
-            prediction_transposed = (prediction_transposed/np.max(prediction_transposed))*255.0
-        else:
-            print("Maximum Depth is 0. Black Picture")
-            prediction_transposed = prediction_transposed*255.0
-            
-            
+        #print(prediction)
+        #print("after Transpose", prediction_transposed)
+        if np.max(prediction_transposed) == 0:
+            print(" !!!ERROR!!!: Maximum Depth is 0. Black Picture")
+        prediction_transposed = (prediction_transposed/np.max(prediction_transposed))*255.0
         prediction_pil = Image.fromarray(np.uint8(prediction_transposed[0]), mode="L")
         prediction_name = "%s/%05d.png" % (output_dir, i)
         prediction_pil.save(prediction_name)

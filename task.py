@@ -5,7 +5,7 @@ from tensorflow.python.platform import gfile
 import numpy as np
 import tensorflow as tf
 from dataset import DataSet
-from dataset import output_predict
+from dataset import output_predict_into_images
 import model as model
 #import new_model as model
 import train_operation as op
@@ -112,9 +112,9 @@ def train():
                     assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
                 if index % 100 == 0:
                     if REFINE_TRAIN:
-                        output_predict(logits_val, images_val, depths_val, "data/predict_refine_%05d_%05d" % (step, i))
+                        output_predict_into_images(logits_val, images_val, depths_val, "data/predict_refine_%05d_%05d" % (step, i))
                     else:
-                        output_predict(logits_val, images_val, depths_val, "data/predict_%05d_%05d" % (step, i))
+                        output_predict_into_images(logits_val, images_val, depths_val, "data/predict_%05d_%05d" % (step, i))
                 index += 1
 
             if step % 5 == 0 or (step * 1) == MAX_STEPS:
