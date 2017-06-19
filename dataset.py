@@ -50,35 +50,39 @@ class DataSet:
         return images, depths, invalid_depths
 
 
-def output_predict(depths, images, real_depths, output_dir):
+def output_predict(predictions, images, groundtruths, output_dir):
     print("output predict into %s" % output_dir)
     if not gfile.Exists(output_dir):
         gfile.MakeDirs(output_dir)
-    for i, (image, depth, real_depth) in enumerate(zip(images, depths, real_depths)):
-        
-    
+    for i, (image, prediction, groundtruth) in enumerate(zip(images, predictions, groundtruths)):
+        #original      
         if GRAYSCALE:    
             image = image.transpose(2, 0, 1)
             pilimg = Image.fromarray(np.uint8(image[0]), mode="L")
         else:
             pilimg = Image.fromarray(np.uint8(image))
-        
         image_name = "%s/%05d_org.png" % (output_dir, i)
         pilimg.save(image_name)
         
-        real_depth = real_depth.transpose(2, 0, 1)
-        real_trans_depth = real_depth*255.0
-        pildepth = Image.fromarray(np.uint8(real_trans_depth[0]), mode ="L")
-        image_depth_name = "%s/%05d_ground.png" % (output_dir, i)
-        pildepth.save(image_depth_name)
+        #ground truth
+        groundtruth = groundtruth.transpose(2, 0, 1)
+        groundtruth_transposed = groundtruth*255.0
+        groundtruth_pil = Image.fromarray(np.uint8(groundtruth_transposed[0]), mode ="L")
+        groundtruth_name = "%s/%05d_ground.png" % (output_dir, i)
+        groundtruth_pil.save(groundtruth_name)
         
+        #prediction
+        print(prediction)
         
-        depth = depth.transpose(2, 0, 1)
-        if np.max(depth) != 0:
-            ra_depth = (depth/np.max(depth))*255.0
+        prediction_transposed = prediction.transpose(2, 0, 1)
+        print("after Transpose", prediction_transposed)
+        if np.max(prediction_transposed) != 0:
+            prediction_transposed = (prediction_transposed/np.max(prediction_transposed))*255.0
         else:
-            ra_depth = depth*255.0
-        
-        depth_pil = Image.fromarray(np.uint8(ra_depth[0]), mode="L")
-        depth_name = "%s/%05d.png" % (output_dir, i)
-        depth_pil.save(depth_name)
+            print("Maximum Depth is 0. Black Picture")
+            prediction_transposed = prediction_transposed*255.0
+            
+            
+        prediction_pil = Image.fromarray(np.uint8(prediction_transposed[0]), mode="L")
+        prediction_name = "%s/%05d.png" % (output_dir, i)
+        prediction_pil.save(prediction_name)
