@@ -1,7 +1,7 @@
 import tensorflow as tensorflow
-from tensorflow.python.platform import gfile
-import numpy as np
-from PIL import Image
+from tensorflow.python.platform import gfile as directory_handler
+import numpy as math_library
+from PIL import Image as image_library
 
 GRAYSCALE = False
 NUMBER_OF_THREADS = 4
@@ -50,35 +50,37 @@ class DataSet:
         )
         return original_images, depth_maps, depth_maps_sigma
     
-
-def output_predict_into_images(predictions, originals, groundtruths, output_dir):
+    
+def output_predictions_into_images(predictions, originals, groundtruths, output_dir):
     print("output predict into %s" % output_dir)
-    if not gfile.Exists(output_dir):
-        gfile.MakeDirs(output_dir)
+    create_output_directory(output_dir)
     for i, (original, prediction, groundtruth) in enumerate(zip(originals, predictions, groundtruths)):
         # original      
         if GRAYSCALE:    
             original = original.transpose(2, 0, 1)
-            original_pil = Image.fromarray(np.uint8(original[0]), mode="L")
+            original_pil = image_library.fromarray(math_library.uint8(original[0]), mode="L")
         else:
-            original_pil = Image.fromarray(np.uint8(original))
+            original_pil = image_library.fromarray(math_library.uint8(original))
         original_name = "%s/%05d_org.png" % (output_dir, i)
         original_pil.save(original_name)
         
         # ground truth
         groundtruth = groundtruth.transpose(2, 0, 1)
         groundtruth_transposed = groundtruth * 255.0
-        groundtruth_pil = Image.fromarray(np.uint8(groundtruth_transposed[0]), mode="L")
+        groundtruth_pil = image_library.fromarray(math_library.uint8(groundtruth_transposed[0]), mode="L")
         groundtruth_name = "%s/%05d_ground.png" % (output_dir, i)
         groundtruth_pil.save(groundtruth_name)
         
         # prediction        
         prediction_transposed = prediction.transpose(2, 0, 1)
-        # print(prediction)
-        # print("after Transpose", prediction_transposed)
-        if np.max(prediction_transposed) == 0:
+        if math_library.max(prediction_transposed) == 0:
             print(" !!!ERROR!!!: Maximum Depth is 0. Black Picture")
-        prediction_transposed = (prediction_transposed / np.max(prediction_transposed)) * 255.0
-        prediction_pil = Image.fromarray(np.uint8(prediction_transposed[0]), mode="L")
+        prediction_transposed = (prediction_transposed / math_library.max(prediction_transposed)) * 255.0
+        prediction_pil = image_library.fromarray(math_library.uint8(prediction_transposed[0]), mode="L")
         prediction_name = "%s/%05d.png" % (output_dir, i)
         prediction_pil.save(prediction_name)
+
+
+def create_output_directory(output_dir):
+    if not directory_handler.Exists(output_dir):
+        directory_handler.MakeDirs(output_dir)

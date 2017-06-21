@@ -1,24 +1,25 @@
 #encoding: utf-8
 
 from datetime import datetime
-from tensorflow.python.platform import gfile
+from tensorflow.python.platform import gfile as directoryHandler
 import numpy as np
 import tensorflow as tf
 from dataset import DataSet
-from dataset import output_predict_into_images
+from dataset import output_predictions_into_images
 #import model as model
 import new_model as model
-import train_operation as op
+import train_operation as trainOperation
 
-MAX_STEPS = 1000
+MAX_EPOCH = 1000
 LOG_DEVICE_PLACEMENT = False
 BATCH_SIZE = 8
-TRAIN_FILE = "train.csv"
-COARSE_DIR = "coarse"
-REFINE_DIR = "refine"
+TRAIN_FILE = "data/train.csv"
+COARSE_DIR = "coarse_checkpoints"
+REFINE_DIR = "refine_checkpoints"
 
 REFINE_TRAIN = True
 FINE_TUNE = True
+
 
 def train():
     with tf.Graph().as_default():
@@ -35,7 +36,7 @@ def train():
             print("coarse train.")
             logits = model.globalDepthMap(images, keep_conv, keep_hidden)
         loss = model.loss(logits, depths, invalid_depths)
-        train_op = op.train(loss, global_step, BATCH_SIZE)
+        train_op = trainOperation.train(loss, global_step, BATCH_SIZE)
         
         # Tensorboard
         #merged = tf.summary.merge_all()
@@ -101,7 +102,7 @@ def train():
         # train
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-        for step in range(MAX_STEPS):
+        for step in range(MAX_EPOCH):
             index = 0
             for i in range(1000):
                 _, loss_value, logits_val, images_val, depths_val = sess.run([train_op, loss, logits, images, depths], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
@@ -112,12 +113,12 @@ def train():
                     assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
                 if index % 100 == 0:
                     if REFINE_TRAIN:
-                        output_predict_into_images(logits_val, images_val, depths_val, "data/predict_refine_%05d_%05d" % (step, i))
+                        output_predictions_into_images(logits_val, images_val, depths_val, "data/predict_refine_%05d_%05d" % (step, i))
                     else:
-                        output_predict_into_images(logits_val, images_val, depths_val, "data/predict_%05d_%05d" % (step, i))
+                        output_predictions_into_images(logits_val, images_val, depths_val, "data/predict_%05d_%05d" % (step, i))
                 index += 1
 
-            if step % 5 == 0 or (step * 1) == MAX_STEPS:
+            if step % 5 == 0 or (step * 1) == MAX_EPOCH:
                 if REFINE_TRAIN:
                     refine_checkpoint_path = REFINE_DIR + '/model.ckpt'
                     saver_refine.save(sess, refine_checkpoint_path, global_step=step)
@@ -129,13 +130,18 @@ def train():
         sess.close()
 
 
-def main(argv=None):
-    if not gfile.Exists(COARSE_DIR):
-        gfile.MakeDirs(COARSE_DIR)
-    if not gfile.Exists(REFINE_DIR):
-        gfile.MakeDirs(REFINE_DIR)
+def main(args=None):
+    createCheckpointDirectorys()
     train()
+
+
+def createCheckpointDirectorys():
+    if not directoryHandler.Exists(COARSE_DIR):
+        directoryHandler.MakeDirs(COARSE_DIR)
+    if not directoryHandler.Exists(REFINE_DIR):
+        directoryHandler.MakeDirs(REFINE_DIR)
 
 
 if __name__ == '__main__':
     tf.app.run()
+    
