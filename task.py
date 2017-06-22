@@ -34,7 +34,15 @@ def train():
             print("refine train.")
             if USE_ORIGINAL_MODEL:
                 coarse = original_model.globalDepthMap(images, keep_conv, trainable=False)
-                logits = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+                logits, f3_d, f3, f2, f1_d, f1, pf1 = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+            
+                o_p_logits = tensorflow.Print(logits, [logits], summarize=100)
+                o_p_f3_d = tensorflow.Print(f3_d, [f3_d], "fine3_dropout", summarize=100)
+                o_p_f3 = tensorflow.Print(f3, [f3], "fine3", summarize=100)
+                o_p_f2 = tensorflow.Print(f2, [f2], "fine2", summarize=100)
+                o_p_f1_d = tensorflow.Print(f1_d, [f1_d], "fine1_dropout", summarize=100)
+                o_p_f1 = tensorflow.Print(f1, [f1], "fine1", summarize=100)
+                o_p_pf1 = tensorflow.Print(pf1, [pf1], "pre_fine1", summarize=100)
             else:
                 coarse = maurice_model.globalDepthMap(images, keep_conv, trainable=False)
                 logits = maurice_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
@@ -117,7 +125,7 @@ def train():
         for step in range(MAX_EPOCH):
             index = 0
             for i in range(1000):
-                _, loss_value, logits_val, images_val, depths_val = sess.run([train_op, loss, logits, images, depths], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                _, loss_value, logits_val, images_val, depths_val, _, _, = sess.run([train_op, loss, logits, images, depths, o_p_logits, o_p_f3_d], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
                 #_, loss_value, logits_val, images_val, summary = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: True, keep_hidden: True})
                 #writer.add_summary(summary, step)
                 if index % 100 == 0:
