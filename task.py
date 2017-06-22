@@ -12,6 +12,7 @@ import train_operation as train_operation
 
 MAX_EPOCH = 1000
 LOG_DEVICE_PLACEMENT = False
+PRINT_TENSORFLOW_VARIABLES = True
 BATCH_SIZE = 8
 TRAIN_FILE = "data/train.csv"
 COARSE_DIR = "coarse_checkpoints"
@@ -25,16 +26,20 @@ USE_ORIGINAL_MODEL = True
 
 def train():
     with tensorflow.Graph().as_default():
-        global_step = tensorflow.Variable(0, trainable=False) #why?
         dataset = DataSet(BATCH_SIZE)
-        images, depths, invalid_depths = dataset.create_trainingbatches_from_csv(TRAIN_FILE) #rename variables
+        input_images, depth_maps, depth_maps_sigma = dataset.create_trainingbatches_from_csv(TRAIN_FILE) #rename variables
+       
+        #initialize tensorflow variablen 
+        global_step = tensorflow.Variable(0, trainable=False) #why?
         keep_conv = tensorflow.placeholder(tensorflow.float32)
         keep_hidden = tensorflow.placeholder(tensorflow.float32)
+        
         if REFINE_TRAIN:
             print("refine train.")
             if USE_ORIGINAL_MODEL:
-                coarse = original_model.globalDepthMap(images, keep_conv, trainable=False)
-                logits = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+                coarse = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
+                logits = original_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
+                loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
                 
                 
                 #logits, f3_d, f3, f2, f1_d, f1, pf1 = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
@@ -46,19 +51,19 @@ def train():
                 #o_p_f1 = tensorflow.Print(f1, [f1], "fine1", summarize=100)
                 #o_p_pf1 = tensorflow.Print(pf1, [pf1], "pre_fine1", summarize=100)
             else:
-                coarse = maurice_model.globalDepthMap(images, keep_conv, trainable=False)
-                logits = maurice_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+                coarse = maurice_model.globalDepthMap(input_images, keep_conv, trainable=False)
+                logits = maurice_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
+                loss = maurice_model.loss(logits, depth_maps, depth_maps_sigma)
         else:
             print("coarse train.")
             if USE_ORIGINAL_MODEL:
-                logits = original_model.globalDepthMap(images, keep_conv, keep_hidden)
+                logits = original_model.globalDepthMap(input_images, keep_conv, keep_hidden)
+                loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
             else:
-                logits = maurice_model.globalDepthMap(images, keep_conv, keep_hidden)
-        if USE_ORIGINAL_MODEL:        
-            loss = original_model.loss(logits, depths, invalid_depths)
-        else:
-            loss = maurice_model.loss(logits, depths, invalid_depths)
+                logits = maurice_model.globalDepthMap(input_images, keep_conv, keep_hidden)
+                loss = maurice_model.loss(logits, depth_maps, depth_maps_sigma)
         train_op = train_operation.train(loss, global_step, BATCH_SIZE)
+            
             
         # Tensorboard
         #merged = tf.summary.merge_all()
@@ -72,32 +77,8 @@ def train():
         writer.add_graph(sess.graph)
         sess.run(init_op)    
 
-        # parameters
-        coarse_params = {}
-        refine_params = {}
-        if REFINE_TRAIN:
-            for variable in tensorflow.global_variables():
-                variable_name = variable.name
-                print("parameter: %s" % (variable_name))
-                if variable_name.find("/") < 0 or variable_name.count("/") != 1:
-                    continue
-                if variable_name.find('coarse') >= 0:
-                    coarse_params[variable_name] = variable
-                print("parameter: %s" %(variable_name))
-                if variable_name.find('fine') >= 0:
-                    refine_params[variable_name] = variable
-        else:
-            for variable in tensorflow.trainable_variables():
-                variable_name = variable.name
-                print("parameter: %s" %(variable_name))
-                if variable_name.find("/") < 0 or variable_name.count("/") != 1:
-                    continue
-                if variable_name.find('coarse') >= 0:
-                    coarse_params[variable_name] = variable
-                if variable_name.find('fine') >= 0:
-                    refine_params[variable_name] = variable
         # define saver
-        print(coarse_params)
+        coarse_params, refine_params = order_tensorflow_variables()
         saver_coarse = tensorflow.train.Saver(coarse_params)
         if REFINE_TRAIN:
             saver_refine = tensorflow.train.Saver(refine_params)
@@ -127,7 +108,7 @@ def train():
         for step in range(MAX_EPOCH):
             index = 0
             for i in range(1000):
-                _, loss_value, logits_val, images_val, depths_val = sess.run([train_op, loss, logits, images, depths], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                _, loss_value, logits_val, images_val, depths_val = sess.run([train_op, loss, logits, input_images, depth_maps], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
                 
                 #_, loss_value, logits_val, images_val, depths_val, _, _, = sess.run([train_op, loss, logits, images, depths, o_p_logits, o_p_f3_d], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
                 #_, loss_value, logits_val, images_val, summary = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: True, keep_hidden: True})
@@ -152,6 +133,30 @@ def train():
         coord.request_stop()
         coord.join(threads)
         sess.close()
+        
+def order_tensorflow_variables():
+    coarse_params = {}
+    refine_params = {}
+    if REFINE_TRAIN:
+        for variable in tensorflow.global_variables():
+            if variable.name.find("/") < 0 or variable.name.count("/") != 1:
+                continue
+            if variable.name.find('coarse') >= 0:
+                coarse_params[variable.name] = variable
+            if variable.name.find('fine') >= 0:
+                refine_params[variable.name] = variable
+    else:
+        for variable in tensorflow.trainable_variables():
+            if variable.name.find("/") < 0 or variable.name.count("/") != 1:
+                continue
+            if variable.name.find('coarse') >= 0:
+                coarse_params[variable.name] = variable
+            if variable.name.find('fine') >= 0:
+                refine_params[variable.name] = variable
+    print("Tensorflow Variables:")
+    print(coarse_params)
+    print(refine_params)
+    return coarse_params, refine_params  
 
 
 def main(args=None):
