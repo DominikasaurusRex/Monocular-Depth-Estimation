@@ -1,14 +1,14 @@
 #encoding: utf-8
 
 from datetime import datetime
-from tensorflow.python.platform import gfile as directoryHandler
-import numpy as np
-import tensorflow as tf
+from tensorflow.python.platform import gfile as directory_handler
+import numpy as math_library
+import tensorflow as tensorflow
 from dataset import DataSet
 from dataset import output_predictions_into_images
-#import model as model
-import new_model as model
-import train_operation as trainOperation
+import model as maurice_model
+import new_model as original_model
+import train_operation as train_operation
 
 MAX_EPOCH = 1000
 LOG_DEVICE_PLACEMENT = False
@@ -20,33 +20,45 @@ REFINE_DIR = "refine_checkpoints"
 REFINE_TRAIN = True
 FINE_TUNE = True
 
+USE_ORIGINAL_MODEL = True
+
 
 def train():
-    with tf.Graph().as_default():
-        global_step = tf.Variable(0, trainable=False)
+    with tensorflow.Graph().as_default():
+        global_step = tensorflow.Variable(0, trainable=False) #why?
         dataset = DataSet(BATCH_SIZE)
-        images, depths, invalid_depths = dataset.create_trainingbatches_from_csv(TRAIN_FILE)
-        keep_conv = tf.placeholder(tf.float32)
-        keep_hidden = tf.placeholder(tf.float32)
+        images, depths, invalid_depths = dataset.create_trainingbatches_from_csv(TRAIN_FILE) #rename variables
+        keep_conv = tensorflow.placeholder(tensorflow.float32)
+        keep_hidden = tensorflow.placeholder(tensorflow.float32)
         if REFINE_TRAIN:
             print("refine train.")
-            coarse = model.globalDepthMap(images, keep_conv, trainable=False)
-            logits = model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+            if USE_ORIGINAL_MODEL:
+                coarse = original_model.globalDepthMap(images, keep_conv, trainable=False)
+                logits = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+            else:
+                coarse = maurice_model.globalDepthMap(images, keep_conv, trainable=False)
+                logits = maurice_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
         else:
             print("coarse train.")
-            logits = model.globalDepthMap(images, keep_conv, keep_hidden)
-        loss = model.loss(logits, depths, invalid_depths)
-        train_op = trainOperation.train(loss, global_step, BATCH_SIZE)
-        
+            if USE_ORIGINAL_MODEL:
+                logits = original_model.globalDepthMap(images, keep_conv, keep_hidden)
+            else:
+                logits = maurice_model.globalDepthMap(images, keep_conv, keep_hidden)
+        if USE_ORIGINAL_MODEL:        
+            loss = original_model.loss(logits, depths, invalid_depths)
+        else:
+            loss = maurice_model.loss(logits, depths, invalid_depths)
+        train_op = train_operation.train(loss, global_step, BATCH_SIZE)
+            
         # Tensorboard
         #merged = tf.summary.merge_all()
-        writer = tf.summary.FileWriter("/tmp/graph_data/train")
+        writer = tensorflow.summary.FileWriter("/tmp/graph_data/train")
         
         # Initialize all Variables
-        init_op = tf.global_variables_initializer()
+        init_op = tensorflow.global_variables_initializer()
 
         # Session
-        sess = tf.Session(config=tf.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT))
+        sess = tensorflow.Session(config=tensorflow.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT))
         writer.add_graph(sess.graph)
         sess.run(init_op)    
 
@@ -54,7 +66,7 @@ def train():
         coarse_params = {}
         refine_params = {}
         if REFINE_TRAIN:
-            for variable in tf.global_variables():
+            for variable in tensorflow.global_variables():
                 variable_name = variable.name
                 print("parameter: %s" % (variable_name))
                 if variable_name.find("/") < 0 or variable_name.count("/") != 1:
@@ -65,7 +77,7 @@ def train():
                 if variable_name.find('fine') >= 0:
                     refine_params[variable_name] = variable
         else:
-            for variable in tf.trainable_variables():
+            for variable in tensorflow.trainable_variables():
                 variable_name = variable.name
                 print("parameter: %s" %(variable_name))
                 if variable_name.find("/") < 0 or variable_name.count("/") != 1:
@@ -76,12 +88,12 @@ def train():
                     refine_params[variable_name] = variable
         # define saver
         print(coarse_params)
-        saver_coarse = tf.train.Saver(coarse_params)
+        saver_coarse = tensorflow.train.Saver(coarse_params)
         if REFINE_TRAIN:
-            saver_refine = tf.train.Saver(refine_params)
+            saver_refine = tensorflow.train.Saver(refine_params)
         # fine tune
         if FINE_TUNE:
-            coarse_ckpt = tf.train.get_checkpoint_state(COARSE_DIR)
+            coarse_ckpt = tensorflow.train.get_checkpoint_state(COARSE_DIR)
             if coarse_ckpt and coarse_ckpt.model_checkpoint_path:
                 print("Pretrained coarse Model Loading.")
                 saver_coarse.restore(sess, coarse_ckpt.model_checkpoint_path)
@@ -90,7 +102,7 @@ def train():
                 print("No Pretrained coarse Model.")
             if REFINE_TRAIN:
                 print("trying to load models")
-                refine_ckpt = tf.train.get_checkpoint_state(REFINE_DIR)
+                refine_ckpt = tensorflow.train.get_checkpoint_state(REFINE_DIR)
                 print(refine_ckpt)
                 if refine_ckpt and refine_ckpt.model_checkpoint_path:
                     print("Pretrained refine Model Loading.")
@@ -100,8 +112,8 @@ def train():
                     print("No Pretrained refine Model.")
 
         # train
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        coord = tensorflow.train.Coordinator()
+        threads = tensorflow.train.start_queue_runners(sess=sess, coord=coord)
         for step in range(MAX_EPOCH):
             index = 0
             for i in range(1000):
@@ -110,7 +122,7 @@ def train():
                 #writer.add_summary(summary, step)
                 if index % 100 == 0:
                     print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), step, index, loss_value))
-                    assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+                    assert not math_library.isnan(loss_value), 'Model diverged with loss = NaN'
                 if index % 100 == 0:
                     if REFINE_TRAIN:
                         output_predictions_into_images(logits_val, images_val, depths_val, "data/predict_refine_%05d_%05d" % (step, i))
@@ -136,12 +148,12 @@ def main(args=None):
 
 
 def createCheckpointDirectorys():
-    if not directoryHandler.Exists(COARSE_DIR):
-        directoryHandler.MakeDirs(COARSE_DIR)
-    if not directoryHandler.Exists(REFINE_DIR):
-        directoryHandler.MakeDirs(REFINE_DIR)
+    if not directory_handler.Exists(COARSE_DIR):
+        directory_handler.MakeDirs(COARSE_DIR)
+    if not directory_handler.Exists(REFINE_DIR):
+        directory_handler.MakeDirs(REFINE_DIR)
 
 
 if __name__ == '__main__':
-    tf.app.run()
+    tensorflow.app.run()
     

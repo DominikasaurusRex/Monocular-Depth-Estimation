@@ -4,6 +4,7 @@ import h5py
 from PIL import Image as image_library
 #import random
 
+train_file_path = 'data/train.csv'
 
 def convert_nyu_dataset_into_images_and_csv(path):
     print("loading dataset: %s" % (path))
@@ -31,7 +32,7 @@ def convert_nyu_dataset_into_images_and_csv(path):
     write_csv_file(trainings_material)
 
 def write_csv_file(trainingsmaterial):
-    with open('train.csv', 'w') as output:
+    with open(train_file_path, 'w') as output:
         for (image_original_path, image_depth_path) in trainingsmaterial:
             output.write("%s,%s" % (image_original_path, image_depth_path))
             output.write("\n")
