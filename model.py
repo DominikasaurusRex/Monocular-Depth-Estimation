@@ -50,7 +50,8 @@ def localDepthMap(images, coarse7_output, keep_conv, reuse=False, trainable=True
         #print("fine3_dropout ", fine3_dropout._shape)
         #print("fine4 ", fine4._shape)
         
-    return fine4, fine3_dropout, fine3, fine2, fine1_dropout, fine1, fine1_conv
+    #return fine4, fine3_dropout, fine3, fine2, fine1_dropout, fine1, fine1_conv
+    return fine4
 
 
 def loss(logits, depths, invalid_depths):
