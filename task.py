@@ -20,8 +20,10 @@ REFINE_DIR = "refine_checkpoints"
 
 REFINE_TRAIN = True
 TRY_LOADING_CHECKPOINT = True
-
 USE_ORIGINAL_MODEL = True
+NUMBER_OF_ITERATIONS_ON_PREDICT = 100
+NUMBER_OF_ITERATIONS_ON_PRINT = 10
+NUMBER_OF_EPOCHE_ON_CHECKPOINT = 5
 
 
 def train():
@@ -30,7 +32,7 @@ def train():
         input_images, depth_maps, depth_maps_sigma = dataset.create_trainingbatches_from_csv(TRAIN_FILE) #rename variables
        
         #Initialize Tensorflow variablen 
-        global_step = tensorflow.Variable(0, trainable=False) #why?
+        global_step = tensorflow.Variable(0, trainable=False)
         keep_conv = tensorflow.placeholder(tensorflow.float32)
         keep_hidden = tensorflow.placeholder(tensorflow.float32)
         
@@ -39,9 +41,8 @@ def train():
         else:
             logits, loss = setup_coarse_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
         train_op = train_operation.train(loss, global_step, BATCH_SIZE)
-            
-            
-        # Tensorboard
+                
+        #Tensorboard
         #merged = tf.summary.merge_all()
         writer = tensorflow.summary.FileWriter("/tmp/graph_data/train")
         
@@ -49,9 +50,9 @@ def train():
         init_op = tensorflow.global_variables_initializer()
 
         # Session
-        sess = tensorflow.Session(config=tensorflow.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT))
-        writer.add_graph(sess.graph)
-        sess.run(init_op)    
+        session = tensorflow.Session(config=tensorflow.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT))
+        writer.add_graph(session.graph)
+        session.run(init_op)    
 
         # Define Saver
         coarse_params, refine_params = order_tensorflow_variables()
@@ -60,58 +61,54 @@ def train():
             
         # Load Checkpoint
         if TRY_LOADING_CHECKPOINT:
-            load_existing_checkpoint(sess, saver_coarse, saver_refine)
+            load_existing_checkpoint(session, saver_coarse, saver_refine)
 
         # train
-        coord = tensorflow.train.Coordinator()
-        threads = tensorflow.train.start_queue_runners(sess=sess, coord=coord)
-        for step in range(MAX_EPOCH):
-            index = 0
+        tensorflow_coordinator = tensorflow.train.Coordinator()
+        threads = tensorflow.train.start_queue_runners(sess=session, coord=tensorflow_coordinator)
+        for current_epoch in range(MAX_EPOCH):
+            iteration = 0
             for i in range(1000):
-                _, loss_value, logits_val, images_val, depths_val = sess.run([train_op, loss, logits, input_images, depth_maps], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
-                
+                _, loss_value, logits_val, images_val, depths_val = session.run([train_op, loss, logits, input_images, depth_maps], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
                 #_, loss_value, logits_val, images_val, depths_val, _, _, = sess.run([train_op, loss, logits, images, depths, o_p_logits, o_p_f3_d], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
                 #_, loss_value, logits_val, images_val, summary = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: True, keep_hidden: True})
                 #writer.add_summary(summary, step)
-                if index % 100 == 0:
-                    print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), step, index, loss_value))
-                    assert not math_library.isnan(loss_value), 'Model diverged with loss = NaN'
-                if index % 100 == 0:
-                    if REFINE_TRAIN:
-                        output_predictions_into_images(logits_val, images_val, depths_val, "data/predict_refine_%05d_%05d" % (step, i))
-                    else:
-                        output_predictions_into_images(logits_val, images_val, depths_val, "data/predict_%05d_%05d" % (step, i))
-                index += 1
+                if iteration % NUMBER_OF_ITERATIONS_ON_PRINT == 0:
+                    print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), current_epoch, iteration, loss_value))
+                    assert not math_library.isnan(loss_value), 'Model diverged with loss = NaN' 
+                if iteration % NUMBER_OF_ITERATIONS_ON_PREDICT == 0:
+                        output_predictions_into_images(logits_val, images_val, depths_val, "data/predict_%05d_%05d" % (current_epoch, i))
+                iteration += 1
 
-            if step % 5 == 0 or (step * 1) == MAX_EPOCH:
+            if current_epoch % NUMBER_OF_EPOCHE_ON_CHECKPOINT == 0 or current_epoch == MAX_EPOCH:
                 if REFINE_TRAIN:
                     refine_checkpoint_path = REFINE_DIR + '/model.ckpt'
-                    saver_refine.save(sess, refine_checkpoint_path, global_step=step)
+                    saver_refine.save(session, refine_checkpoint_path, global_step=current_epoch)
                 else:
                     coarse_checkpoint_path = COARSE_DIR + '/model.ckpt'
-                    saver_coarse.save(sess, coarse_checkpoint_path, global_step=step)
-        coord.request_stop()
-        coord.join(threads)
-        sess.close()
-        
-        
+                    saver_coarse.save(session, coarse_checkpoint_path, global_step=current_epoch)
+                    
+        #End
+        tensorflow_coordinator.request_stop()
+        tensorflow_coordinator.join(threads)
+        session.close() 
         
         
 def load_existing_checkpoint(sess, saver_coarse, saver_refine):
-    coarse_ckpt = tensorflow.train.get_checkpoint_state(COARSE_DIR)
-    if coarse_ckpt and coarse_ckpt.model_checkpoint_path:
+    coarse_checkpoint = tensorflow.train.get_checkpoint_state(COARSE_DIR)
+    if coarse_checkpoint and coarse_checkpoint.model_checkpoint_path:
         print("Pretrained coarse Model Loading.")
-        saver_coarse.restore(sess, coarse_ckpt.model_checkpoint_path)
+        saver_coarse.restore(sess, coarse_checkpoint.model_checkpoint_path)
         print("Pretrained coarse Model Restored.")
     else:
         print("No Pretrained coarse Model.")
         if REFINE_TRAIN:
             print("trying to load models")
-            refine_ckpt = tensorflow.train.get_checkpoint_state(REFINE_DIR)
-            print(refine_ckpt)
-            if refine_ckpt and refine_ckpt.model_checkpoint_path:
+            refine_checkpoint = tensorflow.train.get_checkpoint_state(REFINE_DIR)
+            print(refine_checkpoint)
+            if refine_checkpoint and refine_checkpoint.model_checkpoint_path:
                 print("Pretrained refine Model Loading.")
-                saver_refine.restore(sess, refine_ckpt.model_checkpoint_path)
+                saver_refine.restore(sess, refine_checkpoint.model_checkpoint_path)
                 print("Pretrained refine Model Restored.")
             else:
                 print("No Pretrained refine Model.")
