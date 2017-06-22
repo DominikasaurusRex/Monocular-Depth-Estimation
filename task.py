@@ -19,7 +19,7 @@ COARSE_DIR = "coarse_checkpoints"
 REFINE_DIR = "refine_checkpoints"
 
 REFINE_TRAIN = True
-FINE_TUNE = True
+TRY_LOADING_CHECKPOINT = True
 
 USE_ORIGINAL_MODEL = True
 
@@ -29,39 +29,15 @@ def train():
         dataset = DataSet(BATCH_SIZE)
         input_images, depth_maps, depth_maps_sigma = dataset.create_trainingbatches_from_csv(TRAIN_FILE) #rename variables
        
-        #initialize tensorflow variablen 
+        #Initialize Tensorflow variablen 
         global_step = tensorflow.Variable(0, trainable=False) #why?
         keep_conv = tensorflow.placeholder(tensorflow.float32)
         keep_hidden = tensorflow.placeholder(tensorflow.float32)
         
         if REFINE_TRAIN:
-            print("refine train.")
-            if USE_ORIGINAL_MODEL:
-                coarse = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
-                logits = original_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
-                loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
-                
-                
-                #logits, f3_d, f3, f2, f1_d, f1, pf1 = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
-                #o_p_logits = tensorflow.Print(logits, [logits], summarize=100)
-                #o_p_f3_d = tensorflow.Print(f3_d, [f3_d], "fine3_dropout", summarize=100)
-                #o_p_f3 = tensorflow.Print(f3, [f3], "fine3", summarize=100)
-                #o_p_f2 = tensorflow.Print(f2, [f2], "fine2", summarize=100)
-                #o_p_f1_d = tensorflow.Print(f1_d, [f1_d], "fine1_dropout", summarize=100)
-                #o_p_f1 = tensorflow.Print(f1, [f1], "fine1", summarize=100)
-                #o_p_pf1 = tensorflow.Print(pf1, [pf1], "pre_fine1", summarize=100)
-            else:
-                coarse = maurice_model.globalDepthMap(input_images, keep_conv, trainable=False)
-                logits = maurice_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
-                loss = maurice_model.loss(logits, depth_maps, depth_maps_sigma)
+            logits, loss = setup_refine_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
         else:
-            print("coarse train.")
-            if USE_ORIGINAL_MODEL:
-                logits = original_model.globalDepthMap(input_images, keep_conv, keep_hidden)
-                loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
-            else:
-                logits = maurice_model.globalDepthMap(input_images, keep_conv, keep_hidden)
-                loss = maurice_model.loss(logits, depth_maps, depth_maps_sigma)
+            logits, loss = setup_coarse_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
         train_op = train_operation.train(loss, global_step, BATCH_SIZE)
             
             
@@ -77,30 +53,14 @@ def train():
         writer.add_graph(sess.graph)
         sess.run(init_op)    
 
-        # define saver
+        # Define Saver
         coarse_params, refine_params = order_tensorflow_variables()
         saver_coarse = tensorflow.train.Saver(coarse_params)
-        if REFINE_TRAIN:
-            saver_refine = tensorflow.train.Saver(refine_params)
-        # fine tune
-        if FINE_TUNE:
-            coarse_ckpt = tensorflow.train.get_checkpoint_state(COARSE_DIR)
-            if coarse_ckpt and coarse_ckpt.model_checkpoint_path:
-                print("Pretrained coarse Model Loading.")
-                saver_coarse.restore(sess, coarse_ckpt.model_checkpoint_path)
-                print("Pretrained coarse Model Restored.")
-            else:
-                print("No Pretrained coarse Model.")
-            if REFINE_TRAIN:
-                print("trying to load models")
-                refine_ckpt = tensorflow.train.get_checkpoint_state(REFINE_DIR)
-                print(refine_ckpt)
-                if refine_ckpt and refine_ckpt.model_checkpoint_path:
-                    print("Pretrained refine Model Loading.")
-                    saver_refine.restore(sess, refine_ckpt.model_checkpoint_path)
-                    print("Pretrained refine Model Restored.")
-                else:
-                    print("No Pretrained refine Model.")
+        saver_refine = tensorflow.train.Saver(refine_params)
+            
+        # Load Checkpoint
+        if TRY_LOADING_CHECKPOINT:
+            load_existing_checkpoint(sess, saver_coarse, saver_refine)
 
         # train
         coord = tensorflow.train.Coordinator()
@@ -134,6 +94,30 @@ def train():
         coord.join(threads)
         sess.close()
         
+        
+        
+        
+def load_existing_checkpoint(sess, saver_coarse, saver_refine):
+    coarse_ckpt = tensorflow.train.get_checkpoint_state(COARSE_DIR)
+    if coarse_ckpt and coarse_ckpt.model_checkpoint_path:
+        print("Pretrained coarse Model Loading.")
+        saver_coarse.restore(sess, coarse_ckpt.model_checkpoint_path)
+        print("Pretrained coarse Model Restored.")
+    else:
+        print("No Pretrained coarse Model.")
+        if REFINE_TRAIN:
+            print("trying to load models")
+            refine_ckpt = tensorflow.train.get_checkpoint_state(REFINE_DIR)
+            print(refine_ckpt)
+            if refine_ckpt and refine_ckpt.model_checkpoint_path:
+                print("Pretrained refine Model Loading.")
+                saver_refine.restore(sess, refine_ckpt.model_checkpoint_path)
+                print("Pretrained refine Model Restored.")
+            else:
+                print("No Pretrained refine Model.")
+        
+        
+        
 def order_tensorflow_variables():
     coarse_params = {}
     refine_params = {}
@@ -159,9 +143,47 @@ def order_tensorflow_variables():
     return coarse_params, refine_params  
 
 
+
+def setup_refine_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden):   
+    print("refine train.")
+    if USE_ORIGINAL_MODEL:
+        coarse = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
+        logits = original_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
+        loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
+                
+                
+        #logits, f3_d, f3, f2, f1_d, f1, pf1 = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+        #o_p_logits = tensorflow.Print(logits, [logits], summarize=100)
+        #o_p_f3_d = tensorflow.Print(f3_d, [f3_d], "fine3_dropout", summarize=100)
+        #o_p_f3 = tensorflow.Print(f3, [f3], "fine3", summarize=100)
+        #o_p_f2 = tensorflow.Print(f2, [f2], "fine2", summarize=100)
+        #o_p_f1_d = tensorflow.Print(f1_d, [f1_d], "fine1_dropout", summarize=100)
+        #o_p_f1 = tensorflow.Print(f1, [f1], "fine1", summarize=100)
+        #o_p_pf1 = tensorflow.Print(pf1, [pf1], "pre_fine1", summarize=100)
+    else:
+        coarse = maurice_model.globalDepthMap(input_images, keep_conv, trainable=False)
+        logits = maurice_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
+        loss = maurice_model.loss(logits, depth_maps, depth_maps_sigma)    
+    return logits, loss
+
+
+
+def setup_coarse_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden):   
+    print("coarse train.")
+    if USE_ORIGINAL_MODEL:
+        logits = original_model.globalDepthMap(input_images, keep_conv, keep_hidden)
+        loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
+    else:
+        logits = maurice_model.globalDepthMap(input_images, keep_conv, keep_hidden)
+        loss = maurice_model.loss(logits, depth_maps, depth_maps_sigma)
+    return logits, loss
+
+    
+
 def main(args=None):
     createCheckpointDirectorys()
     train()
+
 
 
 def createCheckpointDirectorys():
@@ -169,6 +191,7 @@ def createCheckpointDirectorys():
         directory_handler.MakeDirs(COARSE_DIR)
     if not directory_handler.Exists(REFINE_DIR):
         directory_handler.MakeDirs(REFINE_DIR)
+
 
 
 if __name__ == '__main__':
