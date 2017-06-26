@@ -9,7 +9,7 @@ from dataset import output_predictions_into_images
 import model as original_model
 import new_model as maurice_model
 import train_operation as train_operation
-
+  
 MAX_EPOCH = 1000
 LOG_DEVICE_PLACEMENT = False
 PRINT_TENSORFLOW_VARIABLES = True
