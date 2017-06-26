@@ -15,10 +15,10 @@ LOG_DEVICE_PLACEMENT = False
 PRINT_TENSORFLOW_VARIABLES = True
 BATCH_SIZE = 8
 TRAIN_FILE = "data/train.csv"
-COARSE_DIR = "coarse_checkpoints"
-REFINE_DIR = "refine_checkpoints"
+COARSE_DIR = "checkpoints_coarse"
+REFINE_DIR = "checkpoints_refine"
 
-REFINE_TRAIN = True
+REFINE_TRAIN = False
 TRY_LOADING_CHECKPOINT = True
 USE_ORIGINAL_MODEL = True
 NUMBER_OF_ITERATIONS_ON_PREDICT = 100
@@ -57,7 +57,10 @@ def train():
         # Define Saver
         coarse_params, refine_params = order_tensorflow_variables()
         saver_coarse = tensorflow.train.Saver(coarse_params)
-        saver_refine = tensorflow.train.Saver(refine_params)
+        saver_refine = None
+        if REFINE_TRAIN:
+            saver_refine = tensorflow.train.Saver(refine_params)
+        
             
         # Load Checkpoint
         if TRY_LOADING_CHECKPOINT:
