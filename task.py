@@ -18,7 +18,7 @@ TRAIN_FILE = "data/train.csv"
 COARSE_DIR = "checkpoints_coarse"
 REFINE_DIR = "checkpoints_refine"
 
-REFINE_TRAIN = False
+REFINE_TRAIN = True
 TRY_LOADING_CHECKPOINT = True
 USE_ORIGINAL_MODEL = True
 NUMBER_OF_ITERATIONS_ON_PREDICT = 100

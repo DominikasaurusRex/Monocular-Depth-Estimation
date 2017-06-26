@@ -41,7 +41,9 @@ def localDepthMap(images, coarse7_output, keep_conv, reuse=False, trainable=True
         fine2 = tf.concat(axis=3, values=[fine1_dropout, coarse7_output], name="fine2_concat")
         fine3 = conv2d('fine3', fine2, [5, 5, 64, 64], [64], [1, 1, 1, 1], padding='SAME', reuse=reuse, trainable=trainable)
         fine3_dropout = tf.nn.dropout(fine3, keep_conv)
-        fine4 = conv2d('fine4', fine3_dropout, [5, 5, 64, 1], [1], [1, 1, 1, 1], padding='SAME', reuse=reuse, trainable=trainable)
+        fine4_conv = conv2d('fine4_conv', fine3_dropout, [5, 5, 64, 1], [1], [1, 1, 1, 1], padding='SAME', reuse=reuse, trainable=trainable)
+        fine4_full = fullyConnectedLayer('fine4_full', fine4_conv, [55*74*1, 4070], [4070], reuse=reuse, trainable=trainable)
+        fine4 = tf.reshape(fine4_full, [-1, 55, 74, 1])
 
         #print("fine1_conv ", fine1_conv._shape)
         #print("fine1 ", fine1._shape)
