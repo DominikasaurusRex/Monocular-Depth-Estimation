@@ -147,11 +147,15 @@ def order_tensorflow_variables():
 def setup_refine_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden):   
     print("refine train.")
     if USE_ORIGINAL_MODEL:
-        coarse = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
-        logits = original_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
+        #coarse = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
+        coarse7, coarse6, coarse5, coarse3 = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
+        logits = original_model.localDepthMap(input_images, coarse7, keep_conv, keep_hidden)
         loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
                 
-                
+        c7 = tensorflow.Print(coarse7, [coarse7], summarize=100)
+        c6 = tensorflow.Print(coarse6, [coarse6], summarize=100)
+        c5 = tensorflow.Print(coarse5, [coarse5], summarize=100)
+        c3 = tensorflow.Print(coarse3, [coarse3], summarize=100)
         #logits, f3_d, f3, f2, f1_d, f1, pf1 = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
         #o_p_logits = tensorflow.Print(logits, [logits], summarize=100)
         #o_p_f3_d = tensorflow.Print(f3_d, [f3_d], "fine3_dropout", summarize=100)
