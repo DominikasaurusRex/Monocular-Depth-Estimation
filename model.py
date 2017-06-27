@@ -29,8 +29,8 @@ def globalDepthMap(images, reuse=False, trainable=True):
         #print("Coarse6: ", coarse6._shape)
         #print("Coarse7: ", coarse7._shape)
         #print("Coarse7_output: ", coarse7_output._shape)
-    return coarse7_output, coarse6, coarse5, coarse3
-    #return coarse7_output
+    #return coarse7_output, coarse6, coarse5, coarse3
+    return coarse7_output
 
 
 def localDepthMap(images, coarse7_output, keep_conv, reuse=False, trainable=True):
