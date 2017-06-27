@@ -39,11 +39,17 @@ def train():
         keep_conv = tensorflow.placeholder(tensorflow.float32)
         keep_hidden = tensorflow.placeholder(tensorflow.float32)
         
-        if REFINE_TRAIN:
-            logits, loss = setup_refine_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
+        if TEST_PICTURE_MODE:
+            if REFINE_TRAIN:
+                logits = setup_refine_model_testing(test_image, keep_conv, keep_hidden)
+            else:
+                logits = setup_coarse_model_testing(test_image, keep_conv, keep_hidden)
         else:
-            logits, loss = setup_coarse_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
-        train_op = train_operation.train(loss, global_step, BATCH_SIZE)
+            if REFINE_TRAIN:
+                logits, loss = setup_refine_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
+            else:
+                logits, loss = setup_coarse_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
+            train_op = train_operation.train(loss, global_step, BATCH_SIZE)
                 
         #Tensorboard
         #merged = tf.summary.merge_all()
@@ -150,14 +156,22 @@ def order_tensorflow_variables():
     print(refine_params)
     return coarse_params, refine_params  
 
-
+def setup_refine_model_testing(test_image, keep_conv, keep_hidden):
+    print("refine train.")
+    if USE_ORIGINAL_MODEL:
+        coarse = original_model.globalDepthMap(test_image, keep_conv, trainable=False)
+        logits = original_model.localDepthMap(test_image, coarse, keep_conv, keep_hidden)  
+    else:
+        coarse = maurice_model.globalDepthMap(test_image, keep_conv, trainable=False)
+        logits = maurice_model.localDepthMap(test_image, coarse, keep_conv, keep_hidden)  
+    return logits
 
 def setup_refine_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden):   
     print("refine train.")
     if USE_ORIGINAL_MODEL:
-        #coarse = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
-        coarse7, coarse6, coarse5, coarse3 = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
-        logits = original_model.localDepthMap(input_images, coarse7, keep_conv, keep_hidden)
+        coarse = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
+        #coarse7, coarse6, coarse5, coarse3 = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
+        logits = original_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
         loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
                 
         c7 = tensorflow.Print(coarse7, [coarse7], summarize=100)
