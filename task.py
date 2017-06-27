@@ -9,18 +9,21 @@ from dataset import output_predictions_into_images
 import model as original_model
 import new_model as maurice_model
 import train_operation as train_operation
+import testdata
   
 MAX_EPOCH = 1000
 LOG_DEVICE_PLACEMENT = False
 PRINT_TENSORFLOW_VARIABLES = True
 BATCH_SIZE = 8
 TRAIN_FILE = "data/train.csv"
+TEST_FILE = "data/test_img.jpg"
 COARSE_DIR = "checkpoints_coarse"
 REFINE_DIR = "checkpoints_refine"
 
 REFINE_TRAIN = True
 TRY_LOADING_CHECKPOINT = True
 USE_ORIGINAL_MODEL = True
+TEST_PICTURE_MODE = True
 NUMBER_OF_ITERATIONS_ON_PREDICT = 100
 NUMBER_OF_ITERATIONS_ON_PRINT = 10
 NUMBER_OF_EPOCHE_ON_CHECKPOINT = 5
@@ -30,7 +33,7 @@ def train():
     with tensorflow.Graph().as_default():
         dataset = DataSet(BATCH_SIZE)
         input_images, depth_maps, depth_maps_sigma = dataset.create_trainingbatches_from_csv(TRAIN_FILE) #rename variables
-       
+        test_image = testdata.load_test_image(TEST_FILE)
         #Initialize Tensorflow variablen 
         global_step = tensorflow.Variable(0, trainable=False)
         keep_conv = tensorflow.placeholder(tensorflow.float32)
@@ -69,27 +72,32 @@ def train():
         # train
         tensorflow_coordinator = tensorflow.train.Coordinator()
         threads = tensorflow.train.start_queue_runners(sess=session, coord=tensorflow_coordinator)
-        for current_epoch in range(MAX_EPOCH):
-            iteration = 0
-            for i in range(1000):
-                _, loss_value, logits_val, images_val, depths_val = session.run([train_op, loss, logits, input_images, depth_maps], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
-                #_, loss_value, logits_val, images_val, depths_val, _, _, = sess.run([train_op, loss, logits, images, depths, o_p_logits, o_p_f3_d], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
-                #_, loss_value, logits_val, images_val, summary = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: True, keep_hidden: True})
-                #writer.add_summary(summary, step)
-                if iteration % NUMBER_OF_ITERATIONS_ON_PRINT == 0:
-                    print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), current_epoch, iteration, loss_value))
-                    assert not math_library.isnan(loss_value), 'Model diverged with loss = NaN' 
-                if iteration % NUMBER_OF_ITERATIONS_ON_PREDICT == 0:
-                        output_predictions_into_images(logits_val, images_val, depths_val, "data/predict_%05d_%05d" % (current_epoch, i))
-                iteration += 1
-
-            if current_epoch % NUMBER_OF_EPOCHE_ON_CHECKPOINT == 0 or current_epoch == MAX_EPOCH:
-                if REFINE_TRAIN:
-                    refine_checkpoint_path = REFINE_DIR + '/model.ckpt'
-                    saver_refine.save(session, refine_checkpoint_path, global_step=current_epoch)
-                else:
-                    coarse_checkpoint_path = COARSE_DIR + '/model.ckpt'
-                    saver_coarse.save(session, coarse_checkpoint_path, global_step=current_epoch)
+        
+        if TEST_PICTURE_MODE:
+            logits_val, test_images_val = session.run([logits, test_image], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+            testdata.output_test_predictions_into_images(logits_val, test_images_val, "data/testFolder")
+        else:
+            for current_epoch in range(MAX_EPOCH):
+                iteration = 0
+                for i in range(1000):
+                    _, loss_value, logits_val, images_val, depths_val = session.run([train_op, loss, logits, input_images, depth_maps], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                    #_, loss_value, logits_val, images_val, depths_val, _, _, = sess.run([train_op, loss, logits, images, depths, o_p_logits, o_p_f3_d], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                    #_, loss_value, logits_val, images_val, summary = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: True, keep_hidden: True})
+                    #writer.add_summary(summary, step)
+                    if iteration % NUMBER_OF_ITERATIONS_ON_PRINT == 0:
+                        print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), current_epoch, iteration, loss_value))
+                        assert not math_library.isnan(loss_value), 'Model diverged with loss = NaN' 
+                    if iteration % NUMBER_OF_ITERATIONS_ON_PREDICT == 0:
+                            output_predictions_into_images(logits_val, images_val, depths_val, "data/predict_%05d_%05d" % (current_epoch, i))
+                    iteration += 1
+    
+                if current_epoch % NUMBER_OF_EPOCHE_ON_CHECKPOINT == 0 or current_epoch == MAX_EPOCH:
+                    if REFINE_TRAIN:
+                        refine_checkpoint_path = REFINE_DIR + '/model.ckpt'
+                        saver_refine.save(session, refine_checkpoint_path, global_step=current_epoch)
+                    else:
+                        coarse_checkpoint_path = COARSE_DIR + '/model.ckpt'
+                        saver_coarse.save(session, coarse_checkpoint_path, global_step=current_epoch)
                     
         #End
         tensorflow_coordinator.request_stop()
