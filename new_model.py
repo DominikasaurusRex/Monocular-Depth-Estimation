@@ -21,7 +21,7 @@ def globalDepthMap(images, reuse=False, trainable=True):
         coarse5_flat = tf.reshape(coarse5, [8, 6 * 8 * 256])
         coarse6 = tf.layers.dense(inputs=coarse5_flat , units=4096, activation=tf.nn.relu, reuse=tf.get_variable_scope().reuse)
         pre_coarse7 = tf.layers.dense(inputs=coarse6, units=4070, activation=tf.nn.relu, reuse=tf.get_variable_scope().reuse)
-        coarse7 = tf.reshape( pre_coarse7, [8, 55, 74, 1])
+        coarse7 = tf.reshape(pre_coarse7, [8, 55, 74, 1])
     
         #print("pre_coarse1", pre_coarse1._shape)
         #print("coarse1", coarse1._shape)
@@ -29,10 +29,10 @@ def globalDepthMap(images, reuse=False, trainable=True):
         #print("coarse2", coarse2._shape)
         #print("coarse3", coarse3._shape)
         #print("coarse4", coarse4._shape)
-        #print("coarse5", coarse5._shape)
-        #print("coarse6", coarse6._shape)
-        #print("pre_coarse7",  pre_coarse7._shape)
-        #print("coarse7", coarse7._shape)
+        print("coarse5", coarse5._shape)
+        print("coarse6", coarse6._shape)
+        print("pre_coarse7",  pre_coarse7._shape)
+        print("coarse7", coarse7._shape)
 
     return coarse7
 
@@ -44,7 +44,10 @@ def localDepthMap(images, coarse7_output, keep_conv, reuse=False, trainable=True
         fine2 = tf.concat(axis=3, values=[fine1_dropout, coarse7_output], name="fine2_concat")
         fine3 = tf.layers.conv2d(inputs=fine2, filters=64, kernel_size=[5,5], strides=1, padding='same', activation=tf.nn.relu, name='fine3', reuse=tf.get_variable_scope().reuse)
         fine3_dropout = tf.layers.dropout(inputs=fine3, rate=0.5, noise_shape=None, seed=None, training=trainable, name='fine3_dropout')
-        fine4 = tf.layers.conv2d(inputs=fine3_dropout, filters=1, kernel_size=[5,5], strides=1, padding='same', activation=tf.nn.relu, name='fine4', reuse=tf.get_variable_scope().reuse)
+        fine4_conv = tf.layers.conv2d(inputs=fine3_dropout, filters=1, kernel_size=[5,5], strides=1, padding='same', activation=tf.nn.relu, name='fine4', reuse=tf.get_variable_scope().reuse)
+        fine4_conv_flat = tf.reshape(fine4_conv, [8, 55 * 74 * 1])
+        fine4_full = tf.layers.dense(inputs=fine4_conv_flat, units=4070, activation=tf.nn.relu, reuse=tf.get_variable_scope().reuse)
+        fine4 = tf.reshape(fine4_full, [8, 55, 74, 1])
 
         #print("pre_fine1 ", pre_fine1._shape)
         #print("fine1 ", fine1._shape)
@@ -52,7 +55,9 @@ def localDepthMap(images, coarse7_output, keep_conv, reuse=False, trainable=True
         #print("fine2 ", fine2._shape)
         #print("fine3 ", fine3._shape)
         #print("fine3_dropout ", fine3_dropout._shape)
-        #print("fine4 ", fine4._shape)
+        #print("fine4_conv ", fine4_conv._shape)
+        #print("fine4_full ", fine4_full._shape)
+        print("fine4 ", fine4._shape)
 
     return fine4
 
@@ -74,15 +79,15 @@ def loss(logits, depths, invalid_depths):
     return tf.add_n(tf.get_collection('losses'), name='total_loss')
 
 
-def _add_loss_summaries(total_loss):
-    loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
-    losses = tf.get_collection('losses')
-    loss_averages_op = loss_averages.apply(losses + [total_loss])
-    for l in losses + [total_loss]:
-        tf.summary.scalar(l.op.name + ' (raw)', l)
-        tf.summary.scalar(l.op.name, loss_averages.average(l))
+def train(total_loss, global_step):        
+    train_op = tf.contrib.layers.optimize_loss(
+        loss=total_loss,
+        global_step=global_step,
+        learning_rate=0.03,
+        optimizer="Adam")
 
-    return loss_averages_op
+
+    return train_op
 
 #if __name__ == '__main__':
     #dataset = DataSet(BATCH_SIZE)

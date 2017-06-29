@@ -1,4 +1,5 @@
 eclipse.preferences.version=1
+encoding//Vorverarbeitung/sobel.py=utf-8
 encoding/convert_mat_to_img.py=utf-8
 encoding/model.py=utf-8
 encoding/new_model.py=utf-8

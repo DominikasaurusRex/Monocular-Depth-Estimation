@@ -40,8 +40,11 @@ def train():
             logits, loss = setup_refine_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
         else:
             logits, loss = setup_coarse_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
-        train_op = train_operation.train(loss, global_step, BATCH_SIZE)
-                
+        if USE_ORIGINAL_MODEL:
+            train_op = train_operation.train(loss, global_step, BATCH_SIZE)
+        else:
+            train_op = maurice_model.train(loss, global_step)
+            
         #Tensorboard
         #merged = tf.summary.merge_all()
         writer = tensorflow.summary.FileWriter("/tmp/graph_data/train")
