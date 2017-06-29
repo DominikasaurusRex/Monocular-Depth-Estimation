@@ -1,4 +1,4 @@
-#encoding: utf-8
+# encoding: utf-8
 
 from datetime import datetime
 from tensorflow.python.platform import gfile as directory_handler
@@ -21,19 +21,20 @@ COARSE_DIR = "checkpoints_coarse"
 REFINE_DIR = "checkpoints_refine"
 
 REFINE_TRAIN = False
-TRY_LOADING_CHECKPOINT = True
-USE_ORIGINAL_MODEL = False
 TEST_PICTURE_MODE = False
+TRY_LOADING_CHECKPOINT = True
+USE_ORIGINAL_MODEL = True
 NUMBER_OF_ITERATIONS_ON_PREDICT = 100
 NUMBER_OF_ITERATIONS_ON_PRINT = 10
-NUMBER_OF_EPOCHE_ON_CHECKPOINT = 5
+NUMBER_OF_EPOCHE_ON_CHECKPOINT = 1
 
 
 def train():
     with tf.Graph().as_default():
         dataset = DataSet(BATCH_SIZE)
-        input_images, depth_maps, depth_maps_sigma = dataset.create_trainingbatches_from_csv(TRAIN_FILE) #rename variables
+        input_images, depth_maps, depth_maps_sigma = dataset.create_trainingbatches_from_csv(TRAIN_FILE)  # rename variables
         test_image = testdata.load_test_image(TEST_FILE)
+
         #Initialize Tensorflow variablen 
         global_step = tf.Variable(0, trainable=False)
         keep_conv = tf.placeholder(tf.float32)
@@ -66,6 +67,7 @@ def train():
 
         # Define Saver
         coarse_params, refine_params = order_tensorflow_variables()
+
         saver_coarse = tf.train.Saver(coarse_params)
         saver_refine = None
         if REFINE_TRAIN:
@@ -87,6 +89,7 @@ def train():
             for current_epoch in range(MAX_EPOCH):
                 iteration = 0
                 for i in range(1000):
+
                     if iteration % 100 != 0:
                         _, loss_value, logits_val, images_val, depths_val = session.run([train_op, loss, logits, input_images, depth_maps], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
                         #_, loss_value, logits_val, images_val, depths_val, _, _, = sess.run([train_op, loss, logits, images, depths, o_p_logits, o_p_f3_d], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
@@ -109,7 +112,7 @@ def train():
                         coarse_checkpoint_path = COARSE_DIR + '/model.ckpt'
                         saver_coarse.save(session, coarse_checkpoint_path, global_step=current_epoch)
                     
-        #End
+        # End
         tensorflow_coordinator.request_stop()
         tensorflow_coordinator.join(threads)
         session.close() 
@@ -170,11 +173,20 @@ def setup_refine_model_testing(test_image, keep_conv, keep_hidden):
         logits = maurice_model.localDepthMap(test_image, coarse, keep_conv, keep_hidden)  
     return logits
 
+def setup_coarse_model_testing(test_image, keep_conv, keep_hidden):
+    print("coarse train.")
+    if USE_ORIGINAL_MODEL:
+        logits = original_model.globalDepthMap(test_image, keep_conv, keep_hidden)
+    else:
+        logits = maurice_model.globalDepthMap(test_image, keep_conv, keep_hidden)
+    return logits
+
+
 def setup_refine_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden):   
     print("refine train.")
     if USE_ORIGINAL_MODEL:
         coarse = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
-        #coarse7, coarse6, coarse5, coarse3 = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
+        # coarse7, coarse6, coarse5, coarse3 = original_model.globalDepthMap(input_images, keep_conv, trainable=False)
         logits = original_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
         loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
                 
