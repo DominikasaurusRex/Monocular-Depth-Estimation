@@ -23,16 +23,16 @@ def globalDepthMap(images, reuse=False, trainable=True):
         pre_coarse7 = tf.layers.dense(inputs=coarse6, units=4070, activation=tf.nn.relu, reuse=tf.get_variable_scope().reuse)
         coarse7 = tf.reshape( pre_coarse7, [8, 55, 74, 1])
     
-        #print("pre_coarse1", pre_coarse1._shape)
-        #print("coarse1", coarse1._shape)
-        #print("pre_coarse2", pre_coarse2._shape)
-        #print("coarse2", coarse2._shape)
-        #print("coarse3", coarse3._shape)
-        #print("coarse4", coarse4._shape)
-        #print("coarse5", coarse5._shape)
-        #print("coarse6", coarse6._shape)
-        #print("pre_coarse7",  pre_coarse7._shape)
-        #print("coarse7", coarse7._shape)
+        print("pre_coarse1", pre_coarse1._shape)
+        print("coarse1", coarse1._shape)
+        print("pre_coarse2", pre_coarse2._shape)
+        print("coarse2", coarse2._shape)
+        print("coarse3", coarse3._shape)
+        print("coarse4", coarse4._shape)
+        print("coarse5", coarse5._shape)
+        print("coarse6", coarse6._shape)
+        print("pre_coarse7",  pre_coarse7._shape)
+        print("coarse7", coarse7._shape)
 
     return coarse7
 

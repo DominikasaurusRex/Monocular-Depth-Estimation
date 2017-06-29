@@ -3,12 +3,12 @@
 from datetime import datetime
 from tensorflow.python.platform import gfile as directory_handler
 import numpy as math_library
-import tensorflow as tensorflow
+import tensorflow as tf
 from dataset import DataSet
 from dataset import output_predictions_into_images
 import model as original_model
 import new_model as maurice_model
-import train_operation as train_operation
+import train_operation
 import testdata
   
 MAX_EPOCH = 1000
@@ -30,14 +30,15 @@ NUMBER_OF_EPOCHE_ON_CHECKPOINT = 1
 
 
 def train():
-    with tensorflow.Graph().as_default():
+    with tf.Graph().as_default():
         dataset = DataSet(BATCH_SIZE)
         input_images, depth_maps, depth_maps_sigma = dataset.create_trainingbatches_from_csv(TRAIN_FILE)  # rename variables
         test_image = testdata.load_test_image(TEST_FILE)
-        # Initialize Tensorflow variablen 
-        global_step = tensorflow.Variable(0, trainable=False)
-        keep_conv = tensorflow.placeholder(tensorflow.float32)
-        keep_hidden = tensorflow.placeholder(tensorflow.float32)
+
+        #Initialize Tensorflow variablen 
+        global_step = tf.Variable(0, trainable=False)
+        keep_conv = tf.placeholder(tf.float32)
+        keep_hidden = tf.placeholder(tf.float32)
         
         if TEST_PICTURE_MODE:
             if REFINE_TRAIN:
@@ -51,32 +52,35 @@ def train():
                 logits, loss = setup_coarse_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
             train_op = train_operation.train(loss, global_step, BATCH_SIZE)
                 
-        # Tensorboard
-        # merged = tf.summary.merge_all()
-        writer = tensorflow.summary.FileWriter("/tmp/graph_data/train")
+        #Tensorboard
+        
+        merged = tf.summary.merge_all()
+        writer = tf.summary.FileWriter("/tmp/graph_data/train")
         
         # Initialize all Variables
-        init_op = tensorflow.global_variables_initializer()
+        init_op = tf.global_variables_initializer()
 
         # Session
-        session = tensorflow.Session(config=tensorflow.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT))
+        session = tf.Session(config=tf.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT))
         writer.add_graph(session.graph)
         session.run(init_op)    
 
         # Define Saver
         coarse_params, refine_params = order_tensorflow_variables()
-        saver_coarse = tensorflow.train.Saver(coarse_params, max_to_keep=25)
+
+        saver_coarse = tf.train.Saver(coarse_params)
         saver_refine = None
         if REFINE_TRAIN:
-            saver_refine = tensorflow.train.Saver(refine_params, max_to_keep=25)
+            saver_refine = tf.train.Saver(refine_params)
+        
             
         # Load Checkpoint
         if TRY_LOADING_CHECKPOINT:
             load_existing_checkpoint(session, saver_coarse, saver_refine)
 
         # train
-        tensorflow_coordinator = tensorflow.train.Coordinator()
-        threads = tensorflow.train.start_queue_runners(sess=session, coord=tensorflow_coordinator)
+        tensorflow_coordinator = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=session, coord=tensorflow_coordinator)
         
         if TEST_PICTURE_MODE:
             logits_val, test_images_val = session.run([logits, test_image], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
@@ -85,10 +89,14 @@ def train():
             for current_epoch in range(MAX_EPOCH):
                 iteration = 0
                 for i in range(1000):
-                    _, loss_value, logits_val, images_val, depths_val = session.run([train_op, loss, logits, input_images, depth_maps], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
-                    # _, loss_value, logits_val, images_val, depths_val, _, _, = sess.run([train_op, loss, logits, images, depths, o_p_logits, o_p_f3_d], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
-                    # _, loss_value, logits_val, images_val, summary = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: True, keep_hidden: True})
-                    # writer.add_summary(summary, step)
+
+                    if iteration % 100 != 0:
+                        _, loss_value, logits_val, images_val, depths_val = session.run([train_op, loss, logits, input_images, depth_maps], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                        #_, loss_value, logits_val, images_val, depths_val, _, _, = sess.run([train_op, loss, logits, images, depths, o_p_logits, o_p_f3_d], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                    else:
+                        _, loss_value, logits_val, images_val, depths_val, summary = session.run([train_op, loss, logits, input_images, depth_maps, merged], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                        writer.add_summary(summary, i)
+                        
                     if iteration % NUMBER_OF_ITERATIONS_ON_PRINT == 0:
                         print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), current_epoch, iteration, loss_value))
                         assert not math_library.isnan(loss_value), 'Model diverged with loss = NaN' 
@@ -111,7 +119,7 @@ def train():
         
         
 def load_existing_checkpoint(sess, saver_coarse, saver_refine):
-    coarse_checkpoint = tensorflow.train.get_checkpoint_state(COARSE_DIR)
+    coarse_checkpoint = tf.train.get_checkpoint_state(COARSE_DIR)
     if coarse_checkpoint and coarse_checkpoint.model_checkpoint_path:
         print("Pretrained coarse Model Loading.")
         saver_coarse.restore(sess, coarse_checkpoint.model_checkpoint_path)
@@ -120,7 +128,7 @@ def load_existing_checkpoint(sess, saver_coarse, saver_refine):
         print("No Pretrained coarse Model.")
         if REFINE_TRAIN:
             print("trying to load models")
-            refine_checkpoint = tensorflow.train.get_checkpoint_state(REFINE_DIR)
+            refine_checkpoint = tf.train.get_checkpoint_state(REFINE_DIR)
             print(refine_checkpoint)
             if refine_checkpoint and refine_checkpoint.model_checkpoint_path:
                 print("Pretrained refine Model Loading.")
@@ -135,7 +143,7 @@ def order_tensorflow_variables():
     coarse_params = {}
     refine_params = {}
     if REFINE_TRAIN:
-        for variable in tensorflow.global_variables():
+        for variable in tf.global_variables():
             if variable.name.find("/") < 0 or variable.name.count("/") != 1:
                 continue
             if variable.name.find('coarse') >= 0:
@@ -143,7 +151,7 @@ def order_tensorflow_variables():
             if variable.name.find('fine') >= 0:
                 refine_params[variable.name] = variable
     else:
-        for variable in tensorflow.trainable_variables():
+        for variable in tf.trainable_variables():
             if variable.name.find("/") < 0 or variable.name.count("/") != 1:
                 continue
             if variable.name.find('coarse') >= 0:
@@ -182,18 +190,18 @@ def setup_refine_model(input_images, depth_maps, depth_maps_sigma, keep_conv, ke
         logits = original_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
         loss = original_model.loss(logits, depth_maps, depth_maps_sigma)
                 
-        # c7 = tensorflow.Print(coarse7, [coarse7], summarize=100)
-        # c6 = tensorflow.Print(coarse6, [coarse6], summarize=100)
-        # c5 = tensorflow.Print(coarse5, [coarse5], summarize=100)
-        # c3 = tensorflow.Print(coarse3, [coarse3], summarize=100)
-        # logits, f3_d, f3, f2, f1_d, f1, pf1 = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
-        # o_p_logits = tensorflow.Print(logits, [logits], summarize=100)
-        # o_p_f3_d = tensorflow.Print(f3_d, [f3_d], "fine3_dropout", summarize=100)
-        # o_p_f3 = tensorflow.Print(f3, [f3], "fine3", summarize=100)
-        # o_p_f2 = tensorflow.Print(f2, [f2], "fine2", summarize=100)
-        # o_p_f1_d = tensorflow.Print(f1_d, [f1_d], "fine1_dropout", summarize=100)
-        # o_p_f1 = tensorflow.Print(f1, [f1], "fine1", summarize=100)
-        # o_p_pf1 = tensorflow.Print(pf1, [pf1], "pre_fine1", summarize=100)
+        #c7 = tf.Print(coarse7, [coarse7], summarize=100)
+        #c6 = tf.Print(coarse6, [coarse6], summarize=100)
+        #c5 = tf.Print(coarse5, [coarse5], summarize=100)
+        #c3 = tf.Print(coarse3, [coarse3], summarize=100)
+        #logits, f3_d, f3, f2, f1_d, f1, pf1 = original_model.localDepthMap(images, coarse, keep_conv, keep_hidden)
+        #o_p_logits = tf.Print(logits, [logits], summarize=100)
+        #o_p_f3_d = tf.Print(f3_d, [f3_d], "fine3_dropout", summarize=100)
+        #o_p_f3 = tf.Print(f3, [f3], "fine3", summarize=100)
+        #o_p_f2 = tf.Print(f2, [f2], "fine2", summarize=100)
+        #o_p_f1_d = tf.Print(f1_d, [f1_d], "fine1_dropout", summarize=100)
+        #o_p_f1 = tf.Print(f1, [f1], "fine1", summarize=100)
+        #o_p_pf1 = tf.Print(pf1, [pf1], "pre_fine1", summarize=100)
     else:
         coarse = maurice_model.globalDepthMap(input_images, keep_conv, trainable=False)
         logits = maurice_model.localDepthMap(input_images, coarse, keep_conv, keep_hidden)
@@ -229,5 +237,5 @@ def createCheckpointDirectorys():
 
 
 if __name__ == '__main__':
-    tensorflow.app.run()
+    tf.app.run()
     
