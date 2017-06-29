@@ -1,4 +1,8 @@
-import cv2;
+#encoding: utf-8
+
+import cv2
+import os
+import glob
 import numpy as np;
 
 def sobel(image, kernelSize, direction):
@@ -7,8 +11,6 @@ def sobel(image, kernelSize, direction):
     
     if c > 1:
         img = 0.2126 * im[:,:,0] + 0.7152 * im[:,:,1] + 0.0722 * im[:,:,2];  
-        cv2.imshow('c', img);
-        cv2.waitKey(0);
     else:
         img = im;
     
@@ -39,10 +41,41 @@ def sobel(image, kernelSize, direction):
     
     return img;
 
-#if __name__ == '__main__':
-#    image = cv2.imread("D:/Bilder/test.jpg");
-#
-#    img = sobel(image, 3, 0);
+if __name__ == '__main__':
+    outputfolder = 'D:\\Bilder\\nyu_datasets_2\\'
     
-#    cv2.imshow('Test', img);
-#    cv2.waitKey(0);
+    filenames = []
+    images = []
+    depths = []
+    img = []
+    outputpath = []
+    outputpath2 = []
+    
+    
+    for filename in os.listdir('D:\\Bilder\\nyu_datasets'):
+        filenames.append(filename);
+    
+    for i in range(0, len(filenames), 2):
+        outputpath.append(outputfolder + filenames[i])
+        outputpath2.append(outputfolder + filenames[i+1])
+    
+    for files in glob.glob('D:\\Bilder\\nyu_datasets\\*.jpg'):
+        image = cv2.imread(files)
+        images.append(image)
+    
+    for depth_map in glob.glob('D:\\Bilder\\nyu_datasets\\*.png'):
+        depth = cv2.imread(depth_map)
+        depths.append(depth)
+        
+    for i in range(0, len(images), 1):
+        img.append(sobel(images[i], 3, 0))
+        
+    for i in range(0, len(img), 1):
+        cv2.imwrite(outputpath[i], img[i])
+        cv2.imwrite(outputpath2[i], depths[i])
+    
+
+    #cv2.imshow('Test', img);
+    #cv2.waitKey(0);
+    
+    

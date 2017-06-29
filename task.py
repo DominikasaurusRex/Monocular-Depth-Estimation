@@ -51,7 +51,6 @@ def train():
             else:
                 logits, loss = setup_coarse_model(input_images, depth_maps, depth_maps_sigma, keep_conv, keep_hidden)
             train_op = train_operation.train(loss, global_step, BATCH_SIZE)
-                
         #Tensorboard
         
         merged = tf.summary.merge_all()

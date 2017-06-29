@@ -2,8 +2,10 @@ import tensorflow as tensorflow
 from tensorflow.python.platform import gfile as directory_handler
 import numpy as math_library
 from PIL import Image as image_library
+import sobel
 
 GRAYSCALE = False
+SOBEL = True
 NUMBER_OF_THREADS = 4
 IMAGE_HEIGHT = 228
 IMAGE_WIDTH = 304
@@ -15,7 +17,7 @@ class DataSet:
         self.batch_size = batch_size
 
     def create_trainingbatches_from_csv(self, csv_file_path):
-        filename_queue = tensorflow.train.string_input_producer([csv_file_path], shuffle=True)
+        filename_queue = tensorflow.train.string_input_producer([csv_file_path], shuffle=False)
         reader = tensorflow.TextLineReader()
         
         _, serialized_example = reader.read(filename_queue)
