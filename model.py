@@ -16,7 +16,8 @@ def globalDepthMap(images, reuse=False, trainable=True):
         coarse4 = conv2d('coarse4', coarse3, [3, 3, 384, 384], [384], [1, 1, 1, 1], padding='VALID', reuse=reuse, trainable=trainable)
         coarse5 = conv2d('coarse5', coarse4, [3, 3, 384, 256], [256], [1, 1, 1, 1], padding='VALID', reuse=reuse, trainable=trainable)
         coarse6 = fullyConnectedLayer('coarse6', coarse5, [6*10*256, 4096], [4096], reuse=reuse, trainable=trainable)
-        coarse7 = fullyConnectedLayer('coarse7', coarse6, [4096, 4070], [4070], reuse=reuse, trainable=trainable)
+        coarse6_dropout = tf.nn.dropout(coarse6, 0.8)
+        coarse7 = fullyConnectedLayer('coarse7', coarse6_dropout, [4096, 4070], [4070], reuse=reuse, trainable=trainable)
         coarse7_output = tf.reshape(coarse7, [-1, 55, 74, 1])
 
         #print("Coarse1_Conv: ", coarse1_conv._shape)
@@ -29,8 +30,8 @@ def globalDepthMap(images, reuse=False, trainable=True):
         #print("Coarse6: ", coarse6._shape)
         #print("Coarse7: ", coarse7._shape)
         #print("Coarse7_output: ", coarse7_output._shape)
-    return coarse7_output, coarse6, coarse5, coarse3
-    #return coarse7_output
+    #return coarse7_output, coarse6, coarse5, coarse3
+    return coarse7_output
 
 
 def localDepthMap(images, coarse7_output, keep_conv, reuse=False, trainable=True):

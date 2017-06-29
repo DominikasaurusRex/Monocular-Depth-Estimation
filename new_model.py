@@ -5,9 +5,9 @@ import tensorflow as tf
 import math
 from model_part import conv2d
 from model_part import fullyConnectedLayer
-#TRAIN_FILE = "train.csv"
-#BATCH_SIZE = 8
-#from dataset import DataSet
+TRAIN_FILE = "train.csv"
+BATCH_SIZE = 8
+from dataset import DataSet
 
 def globalDepthMap(images, reuse=False, trainable=True):
     with tf.name_scope("Global_Depth"):
@@ -18,10 +18,10 @@ def globalDepthMap(images, reuse=False, trainable=True):
         coarse3 = tf.layers.conv2d(inputs=coarse2, filters=384, kernel_size=[3, 3], strides=1, padding='same', activation=tf.nn.relu, name='coarse3', reuse=tf.get_variable_scope().reuse)
         coarse4 = tf.layers.conv2d(inputs=coarse3, filters=384, kernel_size=[3, 3], strides=1, padding='same', activation=tf.nn.relu, name='coarse4', reuse=tf.get_variable_scope().reuse)
         coarse5 = tf.layers.conv2d(inputs=coarse4, filters=256, kernel_size=[3, 3], strides=2, padding='valid', activation=tf.nn.relu, name='coarse5', reuse=tf.get_variable_scope().reuse)
-        coarse5_flat = tf.reshape(coarse5, [8, 6 * 8 * 256])
+        coarse5_flat = tf.reshape(coarse5, [-1, 6 * 8 * 256])
         coarse6 = tf.layers.dense(inputs=coarse5_flat , units=4096, activation=tf.nn.relu, reuse=tf.get_variable_scope().reuse)
         pre_coarse7 = tf.layers.dense(inputs=coarse6, units=4070, activation=tf.nn.relu, reuse=tf.get_variable_scope().reuse)
-        coarse7 = tf.reshape(pre_coarse7, [8, 55, 74, 1])
+        coarse7 = tf.reshape( pre_coarse7, [-1, 55, 74, 1])
     
         #print("pre_coarse1", pre_coarse1._shape)
         #print("coarse1", coarse1._shape)
@@ -44,10 +44,9 @@ def localDepthMap(images, coarse7_output, keep_conv, reuse=False, trainable=True
         fine2 = tf.concat(axis=3, values=[fine1_dropout, coarse7_output], name="fine2_concat")
         fine3 = tf.layers.conv2d(inputs=fine2, filters=64, kernel_size=[5,5], strides=1, padding='same', activation=tf.nn.relu, name='fine3', reuse=tf.get_variable_scope().reuse)
         fine3_dropout = tf.layers.dropout(inputs=fine3, rate=0.5, noise_shape=None, seed=None, training=trainable, name='fine3_dropout')
-        fine4_conv = tf.layers.conv2d(inputs=fine3_dropout, filters=1, kernel_size=[5,5], strides=1, padding='same', activation=tf.nn.relu, name='fine4', reuse=tf.get_variable_scope().reuse)
-        fine4_conv_flat = tf.reshape(fine4_conv, [8, 55 * 74 * 1])
-        fine4_full = tf.layers.dense(inputs=fine4_conv_flat, units=4070, activation=tf.nn.relu, reuse=tf.get_variable_scope().reuse)
-        fine4 = tf.reshape(fine4_full, [8, 55, 74, 1])
+        fine4 = tf.layers.conv2d(inputs=fine3_dropout, filters=1, kernel_size=[5,5], strides=1, padding='same', activation=tf.nn.relu, name='fine4', reuse=tf.get_variable_scope().reuse)
+        fine4_full = tf.layers.dense(inputs=fine4, units=4070, activation=tf.nn.relu, reuse=tf.get_variable_scope().reuse)
+        fine4_res = tf.reshape(fine4_full, [-1, 55, 74, 1])
 
         #print("pre_fine1 ", pre_fine1._shape)
         #print("fine1 ", fine1._shape)
