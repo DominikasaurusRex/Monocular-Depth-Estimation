@@ -2,7 +2,6 @@ import tensorflow as tensorflow
 from tensorflow.python.platform import gfile as directory_handler
 import numpy as math_library
 from PIL import Image as image_library
-import sobel
 
 GRAYSCALE = False
 SOBEL = True

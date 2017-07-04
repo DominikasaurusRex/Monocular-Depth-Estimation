@@ -52,18 +52,18 @@ if __name__ == '__main__':
     outputpath2 = []
     
     
-    for filename in os.listdir('D:\\Bilder\\nyu_datasets'):
+    for filename in os.listdir('C:\\Users\\Domi\\workspace\\Monocular-Depth-Estimation\\data\\nyu_datasets'):
         filenames.append(filename);
     
     for i in range(0, len(filenames), 2):
         outputpath.append(outputfolder + filenames[i])
         outputpath2.append(outputfolder + filenames[i+1])
     
-    for files in glob.glob('D:\\Bilder\\nyu_datasets\\*.jpg'):
+    for files in glob.glob('C:\\Users\\Domi\\workspace\\Monocular-Depth-Estimation\\data\\nyu_datasets\\*.jpg'):
         image = cv2.imread(files)
         images.append(image)
     
-    for depth_map in glob.glob('D:\\Bilder\\nyu_datasets\\*.png'):
+    for depth_map in glob.glob('C:\\Users\\Domi\\workspace\\Monocular-Depth-Estimation\\data\\nyu_datasets\\*.png'):
         depth = cv2.imread(depth_map)
         depths.append(depth)
         
