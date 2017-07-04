@@ -69,8 +69,6 @@ if __name__ == '__main__':
         
     for i in range(0, len(images), 1):
         img.append(sobel(images[i], 3, 0))
-        
-    for i in range(0, len(img), 1):
         cv2.imwrite(outputpath[i], img[i])
         cv2.imwrite(outputpath2[i], depths[i])
     
